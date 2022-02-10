@@ -13,6 +13,7 @@ namespace TestHarness
     {
         static async Task Main(string[] args)
         {
+            // Testing dataset https://www.kaggle.com/najzeko/steam-reviews-2021
             const string filePath = @"..\..\big.csv";
 
             var config = new TokenizerConfig();
