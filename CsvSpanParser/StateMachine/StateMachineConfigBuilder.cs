@@ -15,12 +15,19 @@ namespace CsvSpanParser.StateMachine
             LabelTarget returnTarget = Expression.Label(typeof(bool));
 
             var switchCaseExpressions = stateMapBuilders
-                .Select(builder => Expression.SwitchCase(Expression.Return(returnTarget, Expression.Invoke(builder.Build(returnTarget), inputParam, outNewStateParam)), Expression.Constant(builder.State)))
+                .Select(builder => Expression.SwitchCase(builder.Build(inputParam, outNewStateParam, returnTarget), Expression.Constant(builder.State)))
                 .ToArray();
 
-            SwitchExpression stateSwitch = Expression.Switch(stateParam, Expression.Throw(Expression.Constant(new ArgumentException("Invalid state"))), switchCaseExpressions);
+            SwitchExpression stateSwitch = Expression.Switch(stateParam, switchCaseExpressions);
 
-            Expression<TryTransitionDelegate<TState, TInput>> expression = Expression.Lambda<TryTransitionDelegate<TState, TInput>>(Expression.Block(typeof(bool), stateSwitch, Expression.Label(returnTarget, Expression.Constant(false))), stateParam, inputParam, outNewStateParam);
+            BlockExpression body = Expression.Block(
+                typeof(bool),
+                stateSwitch,
+                Expression.Throw(Expression.Constant(new ArgumentException("Invalid state"))),
+                Expression.Label(returnTarget, Expression.Constant(false)));
+
+            Expression<TryTransitionDelegate<TState, TInput>> expression =
+                Expression.Lambda<TryTransitionDelegate<TState, TInput>>(body, stateParam, inputParam, outNewStateParam);
             return expression.Compile();
         }
 
