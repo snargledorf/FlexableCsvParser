@@ -32,8 +32,7 @@ namespace CsvSpanParser.StateMachine
 
         public IStateMapBuilder<TState, TInput> When(Expression<Func<TInput, bool>> checkInputExpression, TState newState)
         {
-            Func<TInput, bool> checkInput = checkInputExpression.Compile();
-            var transition = new Transition<TState, TInput>(checkInput, newState);
+            var transition = new Transition<TState, TInput>(checkInputExpression, newState);
 
             transitions.Add(transition);
             
@@ -50,16 +49,62 @@ namespace CsvSpanParser.StateMachine
             if (parentBuilder != null)
                 return parentBuilder.Build();
 
+            ParameterExpression inputParam = Expression.Parameter(typeof(TInput));
+            ParameterExpression outNewStateParam = Expression.Parameter(typeof(TState).MakeByRefType());
+
             IEnumerable<Transition<TState, TInput>> transitions = this.transitions;
+
+            List<Expression> transitionExpressions = new();
+
+            LabelTarget returnTarget = Expression.Label(typeof(bool));
+
+            foreach (var transition in transitions)
+            {
+                Expression transitionExpression = CreateExpressionForTransition(inputParam, outNewStateParam, transition, returnTarget);
+                transitionExpressions.Add(transitionExpression);
+            }
+
 
             StateMapBuilder<TState, TInput>? thenBuilder = this.thenBuilder;
             while (thenBuilder != null)
             {
-                transitions = transitions.Concat(thenBuilder.transitions);
+                foreach (var transition in thenBuilder.transitions)
+                {
+                    Expression transitionExpression = CreateExpressionForTransition(inputParam, outNewStateParam, transition, returnTarget);
+                    transitionExpressions.Add(transitionExpression);
+                }
+
                 thenBuilder = thenBuilder.thenBuilder;
             }
 
-            return new StateMap<TState, TInput>(state, transitions.ToArray());
+            BinaryExpression assignOutNewStateDefault = Expression.Assign(outNewStateParam, Expression.Constant(state));
+            transitionExpressions.Add(assignOutNewStateDefault);
+
+            GotoExpression returnFalse = Expression.Return(returnTarget, Expression.Constant(false));
+            transitionExpressions.Add(returnFalse);
+
+            transitionExpressions.Add(Expression.Label(returnTarget, Expression.Constant(false)));
+
+            BlockExpression checkTransitionsBody = Expression.Block(typeof(bool), transitionExpressions);
+
+            CheckTransitionsDelegate<TState, TInput> checkTransitions =
+                Expression.Lambda<CheckTransitionsDelegate<TState, TInput>>(checkTransitionsBody, inputParam, outNewStateParam).Compile();
+
+            return new StateMap<TState, TInput>(state, checkTransitions);
+
+            static Expression CreateExpressionForTransition(ParameterExpression inputParam, ParameterExpression outNewStateParam, Transition<TState, TInput> transition, LabelTarget returnTarget)
+            {
+                InvocationExpression checkInputInvoke = Expression.Invoke(transition.CheckInput, inputParam);
+                ConstantExpression newStateValue = Expression.Constant(transition.NewState);
+                BinaryExpression assignOutNewState = Expression.Assign(outNewStateParam, newStateValue);
+
+                BlockExpression ifBody =
+                    Expression.Block(
+                        assignOutNewState,
+                        Expression.Return(returnTarget, Expression.Constant(true)));
+
+                return Expression.IfThen(checkInputInvoke, ifBody);
+            }
         }
     }
 

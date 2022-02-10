@@ -61,6 +61,7 @@ namespace CsvSpanParser
 			if (readBufferIndex >= readBufferLength)
 			{
 				readBufferLength = await Reader.ReadAsync(readBuffer, cancellationToken).ConfigureAwait(false);
+
 				readBufferIndex = 0;
 
 				if (readBufferLength == 0)
@@ -74,7 +75,6 @@ namespace CsvSpanParser
 		public virtual Token ReadToken()
 		{
 			const int StartOfEndOfRecord = TokenState.StartOfDelimiterStates;
-
 			int state = TokenState.Start;
 			int workingBufferIndex = 0;
 

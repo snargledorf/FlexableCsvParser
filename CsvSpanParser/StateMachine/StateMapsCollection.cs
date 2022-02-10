@@ -11,7 +11,7 @@
             stateMapLookup = enumerable.ToDictionary(sm => sm.State, sm => sm);
         }
 
-        public bool TryGetMapForState(TState state, out IStateMap<TState, TInput> map)
+        public bool TryGetMapForState(TState state, out IStateMap<TState, TInput>? map)
         {
             return stateMapLookup.TryGetValue(state, out map);
         }

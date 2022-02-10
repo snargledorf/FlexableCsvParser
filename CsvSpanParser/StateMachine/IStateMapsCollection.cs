@@ -2,6 +2,6 @@
 {
     public interface IStateMapsCollection<TState, TInput>
     {
-        bool TryGetMapForState(TState state, out IStateMap<TState, TInput> map);
+        bool TryGetMapForState(TState state, out IStateMap<TState, TInput>? map);
     }
 }
