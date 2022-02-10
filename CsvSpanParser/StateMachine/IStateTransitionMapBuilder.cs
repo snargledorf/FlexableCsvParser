@@ -6,6 +6,8 @@ namespace CsvSpanParser.StateMachine
     {
         TState State { get; }
 
+        IStateTransitionMapBuilder<TState, TInput> RootBuilder { get; }
+
         IStateTransitionMapBuilder<TState, TInput> Then { get; }
 
         IStateTransitionMapBuilder<TState, TInput> When(TInput input, TState newState);
