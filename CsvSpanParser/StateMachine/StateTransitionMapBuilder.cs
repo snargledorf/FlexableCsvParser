@@ -2,35 +2,36 @@
 
 namespace CsvSpanParser.StateMachine
 {
-    internal partial class StateMapBuilder<TState, TInput> : IStateMapBuilder<TState, TInput> where TState : notnull where TInput : notnull
+    internal partial class StateTransitionMapBuilder<TState, TInput> : IStateTransitionMapBuilder<TState, TInput> where TState : notnull where TInput : notnull
     {
-        private readonly TState state;
 
-        private StateMapBuilder<TState, TInput>? parentBuilder;
+        private StateTransitionMapBuilder<TState, TInput>? parentBuilder;
 
-        private StateMapBuilder<TState, TInput>? thenBuilder;
+        private StateTransitionMapBuilder<TState, TInput>? thenBuilder;
 
         private readonly List<Transition<TState, TInput>> transitions = new();
 
-        public IStateMapBuilder<TState, TInput> Then => thenBuilder = new StateMapBuilder<TState, TInput>(state, this);
+        public IStateTransitionMapBuilder<TState, TInput> Then => thenBuilder = new StateTransitionMapBuilder<TState, TInput>(State, this);
 
-        public StateMapBuilder(TState state)
+        public TState State { get; }
+
+        public StateTransitionMapBuilder(TState state)
         {
-            this.state = state;
+            this.State = state;
         }
 
-        private StateMapBuilder(TState state, StateMapBuilder<TState, TInput> stateMapBuilder)
+        private StateTransitionMapBuilder(TState state, StateTransitionMapBuilder<TState, TInput> stateMapBuilder)
             : this(state)
         {
             this.parentBuilder = stateMapBuilder;
         }
 
-        public IStateMapBuilder<TState, TInput> When(TInput input, TState newState)
+        public IStateTransitionMapBuilder<TState, TInput> When(TInput input, TState newState)
         {
             return When(i => i.Equals(input), newState);
         }
 
-        public IStateMapBuilder<TState, TInput> When(Expression<Func<TInput, bool>> checkInputExpression, TState newState)
+        public IStateTransitionMapBuilder<TState, TInput> When(Expression<Func<TInput, bool>> checkInputExpression, TState newState)
         {
             var transition = new Transition<TState, TInput>(checkInputExpression, newState);
 
@@ -44,10 +45,10 @@ namespace CsvSpanParser.StateMachine
             When(_ => true, newState);
         }
 
-        public IStateMap<TState, TInput> Build()
+        public Expression<CheckTransitionsDelegate<TState, TInput>> Build(LabelTarget returnTarget)
         {
             if (parentBuilder != null)
-                return parentBuilder.Build();
+                return parentBuilder.Build(returnTarget);
 
             ParameterExpression inputParam = Expression.Parameter(typeof(TInput));
             ParameterExpression outNewStateParam = Expression.Parameter(typeof(TState).MakeByRefType());
@@ -56,8 +57,6 @@ namespace CsvSpanParser.StateMachine
 
             List<Expression> transitionExpressions = new();
 
-            LabelTarget returnTarget = Expression.Label(typeof(bool));
-
             foreach (var transition in transitions)
             {
                 Expression transitionExpression = CreateExpressionForTransition(inputParam, outNewStateParam, transition, returnTarget);
@@ -65,7 +64,7 @@ namespace CsvSpanParser.StateMachine
             }
 
 
-            StateMapBuilder<TState, TInput>? thenBuilder = this.thenBuilder;
+            StateTransitionMapBuilder<TState, TInput>? thenBuilder = this.thenBuilder;
             while (thenBuilder != null)
             {
                 foreach (var transition in thenBuilder.transitions)
@@ -77,7 +76,7 @@ namespace CsvSpanParser.StateMachine
                 thenBuilder = thenBuilder.thenBuilder;
             }
 
-            BinaryExpression assignOutNewStateDefault = Expression.Assign(outNewStateParam, Expression.Constant(state));
+            BinaryExpression assignOutNewStateDefault = Expression.Assign(outNewStateParam, Expression.Constant(State));
             transitionExpressions.Add(assignOutNewStateDefault);
 
             GotoExpression returnFalse = Expression.Return(returnTarget, Expression.Constant(false));
@@ -87,10 +86,7 @@ namespace CsvSpanParser.StateMachine
 
             BlockExpression checkTransitionsBody = Expression.Block(typeof(bool), transitionExpressions);
 
-            CheckTransitionsDelegate<TState, TInput> checkTransitions =
-                Expression.Lambda<CheckTransitionsDelegate<TState, TInput>>(checkTransitionsBody, inputParam, outNewStateParam).Compile();
-
-            return new StateMap<TState, TInput>(state, checkTransitions);
+            return Expression.Lambda<CheckTransitionsDelegate<TState, TInput>>(checkTransitionsBody, inputParam, outNewStateParam);
 
             static Expression CreateExpressionForTransition(ParameterExpression inputParam, ParameterExpression outNewStateParam, Transition<TState, TInput> transition, LabelTarget returnTarget)
             {
