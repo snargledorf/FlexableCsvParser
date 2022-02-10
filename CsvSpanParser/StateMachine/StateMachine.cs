@@ -8,11 +8,12 @@ namespace CsvSpanParser.StateMachine
     {
         private TryTransitionDelegate<TState, TInput> tryTransitions;
 
-        public StateMachine(Action<IStateMachineConfigBuilder<TState, TInput>> buildStates)
+        public StateMachine(Action<IStateMachineTransitionMapBuilder<TState, TInput>> buildStates)
         {
-            var stateMachineConfig = new StateMachineConfigBuilder<TState, TInput>();
+            var stateMachineConfig = new StateMachineTransitionMapBuilder<TState, TInput>();
             buildStates(stateMachineConfig);
-            tryTransitions = stateMachineConfig.Build();
+            IStateMachineTransitionMap<TState, TInput> stateMachineTransitionMap = stateMachineConfig.Build();
+            tryTransitions = StateMachineTransitionMapExpressionFactory<TState, TInput>.BuildExpression(stateMachineTransitionMap);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

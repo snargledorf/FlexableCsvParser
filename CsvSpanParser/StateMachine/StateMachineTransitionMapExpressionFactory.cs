@@ -2,11 +2,11 @@
 
 namespace CsvSpanParser.StateMachine
 {
-    internal class StateMachineConfigBuilder<TState, TInput> : IStateMachineConfigBuilder<TState, TInput> where TState : notnull where TInput : notnull
+    internal static class StateMachineTransitionMapExpressionFactory<TState, TInput>
+        where TState : notnull
+        where TInput : notnull
     {
-        private readonly List<StateTransitionMapBuilder<TState, TInput>> stateMapBuilders = new();
-
-        public TryTransitionDelegate<TState, TInput> Build()
+        public static TryTransitionDelegate<TState, TInput> BuildExpression(IStateMachineTransitionMap<TState, TInput> map)
         {
             ParameterExpression stateParam = Expression.Parameter(typeof(TState));
             ParameterExpression inputParam = Expression.Parameter(typeof(TInput));
@@ -14,8 +14,12 @@ namespace CsvSpanParser.StateMachine
 
             LabelTarget returnTarget = Expression.Label(typeof(bool));
 
-            var switchCaseExpressions = stateMapBuilders
-                .Select(builder => Expression.SwitchCase(builder.Build(inputParam, outNewStateParam, returnTarget), Expression.Constant(builder.State)))
+            var switchCaseExpressions = map
+                .Select(tm =>
+                {
+                    var transitionMapExpression = TransitionMapExpressionFactory<TState, TInput>.BuildExpression(tm, inputParam, outNewStateParam, returnTarget);
+                    return Expression.SwitchCase(transitionMapExpression, Expression.Constant(tm.State));
+                })
                 .ToArray();
 
             SwitchExpression stateSwitch = Expression.Switch(stateParam, switchCaseExpressions);
@@ -29,13 +33,6 @@ namespace CsvSpanParser.StateMachine
             Expression<TryTransitionDelegate<TState, TInput>> expression =
                 Expression.Lambda<TryTransitionDelegate<TState, TInput>>(body, stateParam, inputParam, outNewStateParam);
             return expression.Compile();
-        }
-
-        public IStateTransitionMapBuilder<TState, TInput> From(TState state)
-        {
-            StateTransitionMapBuilder<TState, TInput> stateMapBuilder = new(state);
-            stateMapBuilders.Add(stateMapBuilder);
-            return stateMapBuilder;
         }
     }
 }

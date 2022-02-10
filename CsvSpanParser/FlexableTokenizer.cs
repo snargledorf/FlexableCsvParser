@@ -18,27 +18,23 @@ namespace CsvSpanParser
         {
             stateMachine = new StateMachine<int, char>(builder =>
             {
-                const int Record = FlexableTokenizerTokenState.StartOfDelimiterStates;
-                const int EndOfRecord = Record+1;
-
                 builder.From(FlexableTokenizerTokenState.Start)
                     .When(',', FlexableTokenizerTokenState.EndOfFieldDelimiter)
-                    .When('\r', Record)
+                    .When('\r', FlexableTokenizerTokenState.StartOfEndOfRecord)
                     .When('"', FlexableTokenizerTokenState.EndOfFieldDelimiter)
-                    .Then
                     .When((c) => char.IsWhiteSpace(c), FlexableTokenizerTokenState.WhiteSpace)
                     .Default(FlexableTokenizerTokenState.Text);
 
-                builder.From(Record)
-                    .When('\n', EndOfRecord)
-                    .When((c) => c == '\r', FlexableTokenizerTokenState.EndOfWhiteSpace)
+                builder.From(FlexableTokenizerTokenState.StartOfEndOfRecord)
+                    .When('\n', FlexableTokenizerTokenState.EndOfEndOfRecord)
+                    .When('\r', FlexableTokenizerTokenState.EndOfWhiteSpace)
                     .When((c) => char.IsWhiteSpace(c), FlexableTokenizerTokenState.WhiteSpace);
 
                 builder.From(FlexableTokenizerTokenState.WhiteSpace)
                     .When((c) => c == '\r' || !char.IsWhiteSpace(c), FlexableTokenizerTokenState.EndOfWhiteSpace);
 
                 builder.From(FlexableTokenizerTokenState.Text)
-                    .When(c => c == ',' || c == '"' || char.IsWhiteSpace(c), FlexableTokenizerTokenState.EndOfText);
+                    .When((c) => c == ',' || c == '"' || char.IsWhiteSpace(c), FlexableTokenizerTokenState.EndOfText);
             });
         }
 
@@ -64,8 +60,10 @@ namespace CsvSpanParser
                         switch (state)
                         {
                             case FlexableTokenizerTokenState.EndOfText:
+                                return CreateToken(TokenType.Text, ref valueBuilder, workingBuffer[..workingBufferIndex]);
+
                             case FlexableTokenizerTokenState.EndOfWhiteSpace:
-                                return CreateToken(state == FlexableTokenizerTokenState.WhiteSpace ? TokenType.WhiteSpace : TokenType.Text, ref valueBuilder, workingBuffer[..workingBufferIndex]);
+                                return CreateToken(TokenType.WhiteSpace, ref valueBuilder, workingBuffer[..workingBufferIndex]);
 
                             case FlexableTokenizerTokenState.EndOfFieldDelimiter:
                                 readBufferIndex++;
@@ -129,7 +127,8 @@ namespace CsvSpanParser
     {
         public const int Start = 0;
         public const int EndOfFieldDelimiter = Start + 1;
-        public const int EndOfEndOfRecord = EndOfFieldDelimiter + 1;
+        public const int StartOfEndOfRecord = EndOfFieldDelimiter + 1;
+        public const int EndOfEndOfRecord = StartOfEndOfRecord + 1;
         public const int EndOfQuote = EndOfEndOfRecord + 1;
         public const int EndOfEscape = EndOfQuote + 1;
         public const int WhiteSpace = EndOfEscape + 1;
