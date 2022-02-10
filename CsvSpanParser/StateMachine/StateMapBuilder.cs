@@ -42,7 +42,7 @@ namespace CsvSpanParser.StateMachine
 
         public void Default(TState newState)
         {
-            When(_ => true, state);
+            When(_ => true, newState);
         }
 
         public IStateMap<TState, TInput> Build()
@@ -55,7 +55,7 @@ namespace CsvSpanParser.StateMachine
             StateMapBuilder<TState, TInput>? thenBuilder = this.thenBuilder;
             while (thenBuilder != null)
             {
-                transitions.Concat(thenBuilder.transitions);
+                transitions = transitions.Concat(thenBuilder.transitions);
                 thenBuilder = thenBuilder.thenBuilder;
             }
 

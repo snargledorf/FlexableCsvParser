@@ -8,7 +8,8 @@
 
         public StateMap(TState state, Transition<TState, TInput>[] transitions)
         {
-            this.State = state;
+            State = state;
+
             this.transitions = transitions;
         }
 
@@ -16,7 +17,7 @@
 
         public bool TryGetNewState(TInput input, out TState? newState)
         {
-            foreach (var transition in this.transitions)
+            foreach (var transition in transitions)
             {
                 if (transition.CheckInput(input))
                 {
@@ -25,7 +26,7 @@
                 }
             }
 
-            newState = default;
+            newState = State;
             return false;
         }
     }

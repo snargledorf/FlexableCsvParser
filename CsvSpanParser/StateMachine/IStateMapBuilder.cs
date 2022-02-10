@@ -10,7 +10,5 @@ namespace CsvSpanParser.StateMachine
         IStateMapBuilder<TState, TInput> When(Expression<Func<TInput, bool>> checkInputExpression, TState newState);
         
         void Default(TState state);
-
-        IStateMap<TState, TInput> Build();
     }
 }

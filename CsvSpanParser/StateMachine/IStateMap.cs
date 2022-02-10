@@ -4,6 +4,8 @@
         where TState : notnull
         where TInput : notnull
     {
+        TState State { get; }
+
         bool TryGetNewState(TInput input, out TState? newState);
     }
 }

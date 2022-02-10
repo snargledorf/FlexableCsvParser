@@ -18,7 +18,7 @@
             if (statesMap.TryGetMapForState(state, out IStateMap<TState, TInput> map))
                 return map.TryGetNewState(input, out newState);
             
-            newState = default;
+            newState = state;
             return false;
         }
     }
