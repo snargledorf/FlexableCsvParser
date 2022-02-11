@@ -1,31 +1,66 @@
-﻿using System.Linq.Expressions;
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 using System.Text;
-using CsvSpanParser.StateMachine;
 
 namespace CsvSpanParser
 {
-    public class Tokenizer
+    public class Tokenizer : ITokenizer
     {
-        private readonly TextReader reader;
-        private readonly TokenizerConfig config;
+        protected TextReader Reader { get; }
+        protected TokenizerConfig Config { get; }
 
         private readonly Memory<char> readBuffer = new char[4096];
-
         int readBufferIndex;
         int readBufferLength;
 
         public Tokenizer(TextReader reader, TokenizerConfig config)
         {
-            this.reader = reader;
-            this.config = config;
+            Reader = reader;
+            Config = config;
+
+            var fieldDelimiterChar = config.FieldDelimiter[0];
+            if (fieldDelimiterChar != ',' || config.FieldDelimiter.Length > 1)
+                throw new ArgumentException("Field delimiter must be ,");
+
+            if (config.RecordDelimiter.Length > 2 || config.RecordDelimiter.Length == 0)
+                throw new ArgumentException("Record delimiter may only be 1 or 2 characters");
+
+            var recordDelimiterFirstChar = config.RecordDelimiter[0];
+
+            // TODO Figure out how to implement this in a fast way so we don't have this limitation
+            if (recordDelimiterFirstChar != '\r' && recordDelimiterFirstChar != '\n')
+                throw new ArgumentException("Record delimiter must be \r\n, \r, or \n");
+
+            if (config.RecordDelimiter.Length == 2)
+            {
+                var recordDelimiterSecondChar = config.RecordDelimiter[1];
+
+                // TODO Figure out how to implement this in a fast way so we don't have this limitation
+                if (recordDelimiterSecondChar != '\n')
+                    throw new ArgumentException("Record delimiter must be \r\n, \r, or \n");
+            }
+
+            if ((config.QuoteDelimiter?.Length ?? 0) > 1)
+                throw new ArgumentException("Quote must be 1 character or empty");
+
+            var quoteChar = config.QuoteDelimiter?[0];
+
+            if (quoteChar.HasValue && quoteChar.Value != '"')
+                throw new ArgumentException("Quote must be empty or \"");
+
+            if ((config.EscapeDelimiter?.Length ?? 0) > 1)
+                throw new ArgumentException("Quote must be 1 character or empty");
+
+            var escapeChar = config.EscapeDelimiter?[0];
+
+            if (escapeChar.HasValue && escapeChar.Value != '"' && escapeChar.Value != '\\')
+                throw new ArgumentException("Escape must be empty, \" or \\");
         }
 
-        public async Task<Token> ReadTokenAsync(CancellationToken cancellationToken = default)
+        public virtual async Task<Token> ReadTokenAsync(CancellationToken cancellationToken = default)
         {
             if (readBufferIndex >= readBufferLength)
             {
-                readBufferLength = await reader.ReadAsync(readBuffer, cancellationToken).ConfigureAwait(false);
+                readBufferLength = await Reader.ReadAsync(readBuffer, cancellationToken).ConfigureAwait(false);
                 readBufferIndex = 0;
 
                 if (readBufferLength == 0)
@@ -36,7 +71,7 @@ namespace CsvSpanParser
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Token ReadToken()
+        public virtual Token ReadToken()
         {
             const int StartOfEndOfRecord = TokenState.StartOfDelimiterStates;
 
@@ -61,7 +96,9 @@ namespace CsvSpanParser
                             {
                                 ',' => TokenState.EndOfFieldDelimiter,
                                 '\r' => StartOfEndOfRecord,
+                                '\n' => TokenState.EndOfEndOfRecord,
                                 '"' => TokenState.EndOfQuote,
+                                '\\' => TokenState.EndOfEscape,
                                 _ => char.IsWhiteSpace(c) ? TokenState.WhiteSpace : TokenState.Text
                             };
                             break;
@@ -72,7 +109,7 @@ namespace CsvSpanParser
                             break;
 
                         case TokenState.Text:
-                            if (char.IsWhiteSpace(c) || c == ',' || c == '"')
+                            if (char.IsWhiteSpace(c) || c == ',' || c == '"' || c == '\\')
                                 return CreateToken(TokenType.Text, ref valueBuilder, workingBuffer[..workingBufferIndex]);
                             break;
 
@@ -104,7 +141,7 @@ namespace CsvSpanParser
                 } while (workingBufferIndex < workingBuffer.Length);
 
                 if (valueBuilder is null)
-                    valueBuilder = new StringBuilder(workingBuffer.Length+10).Append(workingBuffer);
+                    valueBuilder = new StringBuilder(workingBuffer.Length + 10).Append(workingBuffer);
                 else
                     valueBuilder.Append(workingBuffer);
             }
@@ -131,7 +168,7 @@ namespace CsvSpanParser
         {
             if (readBufferIndex >= readBufferLength)
             {
-                readBufferLength = reader.Read(readBuffer.Span);
+                readBufferLength = Reader.Read(readBuffer.Span);
                 readBufferIndex = 0;
             }
 
