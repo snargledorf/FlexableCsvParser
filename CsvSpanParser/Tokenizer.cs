@@ -3,189 +3,207 @@ using System.Text;
 
 namespace CsvSpanParser
 {
-	public class Tokenizer : ITokenizer
-	{
-		protected TextReader Reader { get; }
-		protected TokenizerConfig Config { get; }
-	
-		private readonly Memory<char> readBuffer = new char[4096];
-		int readBufferIndex;
-		int readBufferLength;
+    public class Tokenizer : ITokenizer
+    {
+        protected TextReader Reader { get; }
+        protected TokenizerConfig Config { get; }
 
-		public Tokenizer(TextReader reader, TokenizerConfig config)
-		{
-			Reader = reader;
-			Config = config;
+        private readonly Memory<char> readBuffer = new char[4096];
+        int readBufferIndex;
+        int readBufferLength;
 
-			var fieldDelimiterChar = config.FieldDelimiter[0];
-			if (fieldDelimiterChar != ',' || config.FieldDelimiter.Length > 1)
-				throw new ArgumentException("Field delimiter must be ,");
+        public Tokenizer(TextReader reader, TokenizerConfig config)
+        {
+            Reader = reader;
+            Config = config;
 
-			if (config.RecordDelimiter.Length > 2 || config.RecordDelimiter.Length == 0)
-				throw new ArgumentException("Record delimiter may only be 1 or 2 characters");
+            var fieldDelimiterChar = config.FieldDelimiter[0];
+            if (fieldDelimiterChar != ',' || config.FieldDelimiter.Length > 1)
+                throw new ArgumentException("Field delimiter must be ,");
 
-			var recordDelimiterFirstChar = config.RecordDelimiter[0];
+            if (config.EndOfRecord.Length > 2 || config.EndOfRecord.Length == 0)
+                throw new ArgumentException("Record delimiter may only be 1 or 2 characters");
 
-			// TODO Figure out how to implement this in a fast way so we don't have this limitation
-			if (recordDelimiterFirstChar != '\r' && recordDelimiterFirstChar != '\n')
-				throw new ArgumentException("Record delimiter must be \r\n, \r, or \n");
+            var recordDelimiterFirstChar = config.EndOfRecord[0];
 
-			if (config.RecordDelimiter.Length == 2)
-			{
-				var recordDelimiterSecondChar = config.RecordDelimiter[1];
+            if (recordDelimiterFirstChar != '\r' && recordDelimiterFirstChar != '\n')
+                throw new ArgumentException("Record delimiter must be \r\n, \r, or \n");
 
-				// TODO Figure out how to implement this in a fast way so we don't have this limitation
-				if (recordDelimiterSecondChar != '\n')
-					throw new ArgumentException("Record delimiter must be \r\n, \r, or \n");
-			}
+            if (config.EndOfRecord.Length == 2)
+            {
+                var recordDelimiterSecondChar = config.EndOfRecord[1];
 
-			if ((config.QuoteDelimiter?.Length ?? 0) > 1)
-				throw new ArgumentException("Quote must be 1 character or empty");
+                if (recordDelimiterSecondChar != '\n')
+                    throw new ArgumentException("Record delimiter must be \r\n, \r, or \n");
+            }
 
-			var quoteChar = config.QuoteDelimiter?[0];
+            if ((config.Quote?.Length ?? 0) > 1)
+                throw new ArgumentException("Quote must be 1 character or empty");
 
-			if (quoteChar.HasValue && quoteChar.Value != '"')
-				throw new ArgumentException("Quote must be empty or \"");
+            var quoteChar = config.Quote?[0];
 
-			if ((config.EscapeDelimiter?.Length ?? 0) > 1)
-				throw new ArgumentException("Quote must be 1 character or empty");
+            if (quoteChar.HasValue && quoteChar.Value != '"')
+                throw new ArgumentException("Quote must be empty or \"");
 
-			var escapeChar = config.EscapeDelimiter?[0];
+            if ((config.Escape?.Length ?? 0) > 2)
+                throw new ArgumentException("Escape must be 2 characters or less");
 
-			if (escapeChar.HasValue && escapeChar.Value != '"' && escapeChar.Value != '\\')
-				throw new ArgumentException("Escape must be empty, \" or \\");
-		}
+            var escapeFirstChar = config.Escape?[0];
 
-		public virtual async Task<Token> ReadTokenAsync(CancellationToken cancellationToken = default)
-		{
-			if (readBufferIndex >= readBufferLength)
-			{
-				readBufferLength = await Reader.ReadAsync(readBuffer, cancellationToken).ConfigureAwait(false);
+            if (escapeFirstChar.HasValue && escapeFirstChar.Value != '"' && escapeFirstChar.Value != '\\')
+                throw new ArgumentException("Escape must be either \"\" or \\");
 
-				readBufferIndex = 0;
+            var escapeSecondChar = config.Escape?[1];
+            if (escapeSecondChar.HasValue && escapeSecondChar.Value != '"')
+                throw new ArgumentException("Escape must be either \"\" or \\");
+        }
 
-				if (readBufferLength == 0)
-					return Token.EndOfReader;
-			}
+        public virtual async Task<Token> ReadTokenAsync(CancellationToken cancellationToken = default)
+        {
+            if (readBufferIndex >= readBufferLength)
+            {
+                readBufferLength = await Reader.ReadAsync(readBuffer, cancellationToken).ConfigureAwait(false);
 
-			return await Task.Run(ReadToken);
-		}
+                readBufferIndex = 0;
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public virtual Token ReadToken()
-		{
-			int state = TokenState.Start;
-			int workingBufferIndex = 0;
+                if (readBufferLength == 0)
+                    return Token.EndOfReader;
+            }
 
-			ReadOnlySpan<char> workingBuffer = ReadOnlySpan<char>.Empty;
-			StringBuilder? valueBuilder = null;
+            return await Task.Run(ReadToken);
+        }
 
-			while (CheckReadBuffer())
-			{
-				workingBuffer = readBuffer.Span[readBufferIndex..readBufferLength];
-				workingBufferIndex = 0;
-				do
-				{
-					char c = workingBuffer[workingBufferIndex];
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public virtual Token ReadToken()
+        {
+            int state = TokenState.Start;
+            int workingBufferIndex = 0;
 
-					switch (state)
-					{
-						case TokenState.Start:
-							state = c switch
-							{
-								',' => TokenState.EndOfFieldDelimiter,
-								'\r' => TokenState.StartOfEndOfRecord,
-								'\n' => TokenState.EndOfEndOfRecord,
-								'"' => TokenState.EndOfQuote,
-								'\\' => TokenState.EndOfEscape,
-								_ => char.IsWhiteSpace(c) ? TokenState.WhiteSpace : TokenState.Text
-							};
-							break;
+            ReadOnlySpan<char> workingBuffer = ReadOnlySpan<char>.Empty;
+            StringBuilder? valueBuilder = null;
 
-						case TokenState.WhiteSpace:
-							if (!char.IsWhiteSpace(c) || c == '\r')
-								return CreateToken(TokenType.WhiteSpace, ref valueBuilder, workingBuffer[..workingBufferIndex]);
-							break;
+            while (CheckReadBuffer())
+            {
+                workingBuffer = readBuffer.Span[readBufferIndex..readBufferLength];
+                workingBufferIndex = 0;
+                do
+                {
+                    char c = workingBuffer[workingBufferIndex];
 
-						case TokenState.Text:
-							if (char.IsWhiteSpace(c) || c == ',' || c == '"' || c == '\\')
-								return CreateToken(TokenType.Text, ref valueBuilder, workingBuffer[..workingBufferIndex]);
-							break;
+                    switch (state)
+                    {
+                        case TokenState.Start:
+                            state = c switch
+                            {
+                                ',' => TokenState.EndOfFieldDelimiter,
+                                '\r' => TokenState.StartOfEndOfRecord,
+                                '\n' => TokenState.EndOfEndOfRecord,
+                                '"' => TokenState.StartOfEscape,
+                                '\\' => TokenState.EndOfEscape,
+                                _ => char.IsWhiteSpace(c) ? TokenState.WhiteSpace : TokenState.Text
+                            };
+                            break;
 
-						case TokenState.StartOfEndOfRecord:
-							if (c == '\n')
-								state = TokenState.EndOfEndOfRecord;
-							else
-							{
-								state = TokenState.WhiteSpace;
-								goto case TokenState.WhiteSpace;
-							}
-							break;
+                        case TokenState.WhiteSpace:
+                            if (!char.IsWhiteSpace(c) || c == '\r')
+                                return CreateToken(TokenType.WhiteSpace, ref valueBuilder, workingBuffer[..workingBufferIndex]);
+                            break;
 
-						case TokenState.EndOfFieldDelimiter:
-							return Token.FieldDelimiter;
+                        case TokenState.Text:
+                            if (char.IsWhiteSpace(c) || c == ',' || c == '"' || c == '\\')
+                                return CreateToken(TokenType.Text, ref valueBuilder, workingBuffer[..workingBufferIndex]);
+                            break;
 
-						case TokenState.EndOfEndOfRecord:
-							return Token.EndOfRecord;
+                        case TokenState.StartOfEndOfRecord:
+                            if (c == '\n')
+                            {
+                                state = TokenState.EndOfEndOfRecord;
+                            }
+                            else
+                            {
+                                state = TokenState.WhiteSpace;
+                                goto case TokenState.WhiteSpace;
+                            }
+                            break;
 
-						case TokenState.EndOfQuote:
-							return Token.Quote;
+                        case TokenState.StartOfEscape:
+                            if (c == '"')
+                            {
+                                state = TokenState.EndOfEscape;
+                            }
+                            else
+                            {
+                                state = TokenState.EndOfQuote;
+                                goto case TokenState.EndOfQuote;
+                            }
+                            break;
 
-						case TokenState.EndOfEscape:
-							return Token.Escape;
-					}
+                        case TokenState.EndOfFieldDelimiter:
+                            return Token.FieldDelimiter;
 
-					readBufferIndex++;
-					workingBufferIndex++;
-				} while (workingBufferIndex < workingBuffer.Length);
+                        case TokenState.EndOfEndOfRecord:
+                            return Token.EndOfRecord;
 
-				if (valueBuilder is null)
-					valueBuilder = new StringBuilder(workingBuffer.Length + 10).Append(workingBuffer);
-				else
-					valueBuilder.Append(workingBuffer);
-			}
+                        case TokenState.EndOfQuote:
+                            return Token.Quote;
 
-			return state switch
-			{
-				TokenState.EndOfFieldDelimiter => Token.FieldDelimiter,
-				TokenState.EndOfEndOfRecord => Token.EndOfRecord,
-				TokenState.EndOfQuote => Token.Quote,
-				TokenState.EndOfEscape => Token.Escape,
-				TokenState.Start => Token.EndOfReader,
-				_ => CreateToken(state == TokenState.WhiteSpace ? TokenType.WhiteSpace : TokenType.Text, ref valueBuilder, workingBuffer[..workingBufferIndex])
-			};
+                        case TokenState.EndOfEscape:
+                            return Token.Escape;
+                    }
 
-			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			static Token CreateToken(in TokenType type, ref StringBuilder? valueBuilder, in ReadOnlySpan<char> buffer)
-			{
-				return new Token(type, valueBuilder?.Append(buffer).ToString() ?? new string(buffer));
-			}
-		}
+                    readBufferIndex++;
+                    workingBufferIndex++;
+                } while (workingBufferIndex < workingBuffer.Length);
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		private bool CheckReadBuffer()
-		{
-			if (readBufferIndex >= readBufferLength)
-			{
-				readBufferLength = Reader.Read(readBuffer.Span);
-				readBufferIndex = 0;
-			}
+                if (valueBuilder is null)
+                    valueBuilder = new StringBuilder(workingBuffer.Length + 10).Append(workingBuffer);
+                else
+                    valueBuilder.Append(workingBuffer);
+            }
 
-			return readBufferLength != 0;
-		}
-	}
+            return state switch
+            {
+                TokenState.EndOfFieldDelimiter => Token.FieldDelimiter,
+                TokenState.EndOfEndOfRecord => Token.EndOfRecord,
+                TokenState.EndOfQuote => Token.Quote,
+                TokenState.EndOfEscape => Token.Escape,
+                TokenState.Start => Token.EndOfReader,
+                _ => CreateToken(state == TokenState.WhiteSpace ? TokenType.WhiteSpace : TokenType.Text, ref valueBuilder, ReadOnlySpan<char>.Empty)
+            };
 
-	struct TokenState
-	{
-		public const int Start = 0;
-		public const int EndOfFieldDelimiter = Start + 1;
-		public const int StartOfEndOfRecord = EndOfFieldDelimiter + 1;
-		public const int EndOfEndOfRecord = StartOfEndOfRecord + 1;
-		public const int EndOfQuote = EndOfEndOfRecord + 1;
-		public const int EndOfEscape = EndOfQuote + 1;
-		public const int WhiteSpace = EndOfEscape + 1;
-		public const int EndOfWhiteSpace = WhiteSpace + 1;
-		public const int Text = EndOfWhiteSpace + 1;
-		public const int EndOfText = Text + 1;
-	}
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            static Token CreateToken(in TokenType type, ref StringBuilder? valueBuilder, in ReadOnlySpan<char> buffer)
+            {
+                return new Token(type, valueBuilder?.Append(buffer).ToString() ?? new string(buffer));
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private bool CheckReadBuffer()
+        {
+            if (readBufferIndex >= readBufferLength)
+            {
+                readBufferLength = Reader.Read(readBuffer.Span);
+                readBufferIndex = 0;
+            }
+
+            return readBufferLength != 0;
+        }
+    }
+
+    struct TokenState
+    {
+        public const int Start = 0;
+        public const int EndOfFieldDelimiter = Start + 1;
+        public const int StartOfEndOfRecord = EndOfFieldDelimiter + 1;
+        public const int EndOfEndOfRecord = StartOfEndOfRecord + 1;
+        public const int EndOfQuote = EndOfEndOfRecord + 1;
+        public const int StartOfEscape = EndOfQuote + 1;
+        public const int EndOfEscape = StartOfEscape + 1;
+        public const int WhiteSpace = EndOfEscape + 1;
+        public const int EndOfWhiteSpace = WhiteSpace + 1;
+        public const int Text = EndOfWhiteSpace + 1;
+        public const int EndOfText = Text + 1;
+
+    }
 }

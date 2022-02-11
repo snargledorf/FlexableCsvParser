@@ -1,10 +1,26 @@
 ﻿namespace CsvSpanParser
 {
-    public sealed class TokenizerConfig
+    public struct TokenizerConfig
     {
-        public string FieldDelimiter { get; set; } = ",";
-        public string RecordDelimiter { get; set; } = "\r\n";
-        public string QuoteDelimiter { get; set; } = "\"";
-        public string EscapeDelimiter { get; set; } = "\"";
+        public static readonly TokenizerConfig Default = new();
+        public static readonly TokenizerConfig RFC4180 = Default;
+
+        public TokenizerConfig()
+            : this(",", "\r\n", "\"", "\"\"")
+        {
+        }
+
+        public TokenizerConfig(string fieldDelimiter = ",", string endOfRecord = "\r\n", string quote = "\"", string escape = "\"\"")
+        {
+            FieldDelimiter = fieldDelimiter;
+            EndOfRecord = endOfRecord;
+            Quote = quote;
+            Escape = escape;
+        }
+
+        public string FieldDelimiter { get; }
+        public string EndOfRecord { get; }
+        public string Quote { get; }
+        public string Escape { get; }
     }
 }

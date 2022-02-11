@@ -81,7 +81,7 @@ namespace CsvSpanParser
                 FlexableTokenizerTokenState.EndOfQuote => Token.Quote,
                 FlexableTokenizerTokenState.EndOfEscape => Token.Escape,
                 FlexableTokenizerTokenState.Start => Token.EndOfReader,
-                _ => CreateToken(state == FlexableTokenizerTokenState.WhiteSpace ? TokenType.WhiteSpace : TokenType.Text, ref valueBuilder, workingBuffer[..workingBufferIndex])
+                _ => CreateToken(state == FlexableTokenizerTokenState.WhiteSpace ? TokenType.WhiteSpace : TokenType.Text, ref valueBuilder, ReadOnlySpan<char>.Empty)
             };
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]

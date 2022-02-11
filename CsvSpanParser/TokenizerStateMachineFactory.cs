@@ -141,6 +141,7 @@ namespace CsvSpanParser
                 if (node.BranchIsWhiteSpace)
                 {
                     TreeNode<int> rootNode = node.Root;
+
                     // We might be starting another one of these branches \r\r\n = \r {whitespace} \r\n {record}
                     currentMapBuilder.When(rootNode.Key, FlexableTokenizerTokenState.EndOfWhiteSpace);
 
@@ -168,9 +169,9 @@ namespace CsvSpanParser
             var delimitersToStates = new[]
             {
                 new KeyValuePair<string, int>(config.FieldDelimiter, FlexableTokenizerTokenState.EndOfFieldDelimiter),
-                new KeyValuePair<string, int>(config.RecordDelimiter, FlexableTokenizerTokenState.EndOfEndOfRecord),
-                new KeyValuePair<string, int>(config.QuoteDelimiter, FlexableTokenizerTokenState.EndOfQuote),
-                new KeyValuePair<string, int>(config.EscapeDelimiter, FlexableTokenizerTokenState.EndOfEscape),
+                new KeyValuePair<string, int>(config.EndOfRecord, FlexableTokenizerTokenState.EndOfEndOfRecord),
+                new KeyValuePair<string, int>(config.Quote, FlexableTokenizerTokenState.EndOfQuote),
+                new KeyValuePair<string, int>(config.Escape, FlexableTokenizerTokenState.EndOfEscape),
             };
 
             return new Tree<int>(delimitersToStates);
