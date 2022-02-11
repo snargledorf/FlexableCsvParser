@@ -1,5 +1,6 @@
 ﻿
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -7,7 +8,7 @@ using CsvSpanParser;
 
 namespace TestHarness
 {
-    class Program
+    static class Program
     {
         static async Task Main(string[] args)
         {
@@ -19,14 +20,19 @@ namespace TestHarness
             using var dataRateStream = new DataRateStream(fs);
             using var reader = new StreamReader(dataRateStream);
 
+            var stopwatch = new Stopwatch();
+            stopwatch.Start();
+
             //await ReadLinesAsync(reader).ConfigureAwait(false);
             //await Task.Factory.StartNew(() => ReadLines(reader), TaskCreationOptions.LongRunning).ConfigureAwait(false);
             //await Tokenize(config, reader).ConfigureAwait(false);
             await Task.Factory.StartNew(() => Tokenize(config, reader), TaskCreationOptions.LongRunning).ConfigureAwait(false);
 
-            Console.WriteLine();
+            stopwatch.Stop();
+
+            Console.WriteLine($"Read file in {stopwatch.Elapsed}");
             Console.Write("Press any key to quit...");
-            Console.ReadKey();
+            Console.ReadKey(true);
         }
 
         private static async Task ReadLinesAsync(StreamReader reader)
