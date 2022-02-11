@@ -47,19 +47,15 @@ namespace CsvSpanParser
                                 return CreateToken(TokenType.WhiteSpace, ref valueBuilder, workingBuffer[..workingBufferIndex]);
 
                             case FlexableTokenizerTokenState.EndOfFieldDelimiter:
-                                readBufferIndex++;
                                 return Token.FieldDelimiter;
 
                             case FlexableTokenizerTokenState.EndOfEndOfRecord:
-                                readBufferIndex++;
                                 return Token.EndOfRecord;
 
                             case FlexableTokenizerTokenState.EndOfQuote:
-                                readBufferIndex++;
                                 return Token.Quote;
 
                             case FlexableTokenizerTokenState.EndOfEscape:
-                                readBufferIndex++;
                                 return Token.Escape;
                         }
                     }
@@ -107,10 +103,14 @@ namespace CsvSpanParser
     struct FlexableTokenizerTokenState
     {
         public const int Start = 0;
-        public const int EndOfFieldDelimiter = Start + 1;
-        public const int EndOfEndOfRecord = EndOfFieldDelimiter + 1;
-        public const int EndOfQuote = EndOfEndOfRecord + 1;
-        public const int EndOfEscape = EndOfQuote + 1;
+        public const int FieldDelimiter = Start + 1;
+        public const int EndOfFieldDelimiter = FieldDelimiter + 1;
+        public const int EndOfRecord = EndOfFieldDelimiter + 1;
+        public const int EndOfEndOfRecord = EndOfRecord + 1;
+        public const int Quote = EndOfEndOfRecord + 1;
+        public const int EndOfQuote = Quote + 1;
+        public const int Escape = EndOfQuote + 1;
+        public const int EndOfEscape = Escape + 1;
         public const int WhiteSpace = EndOfEscape + 1;
         public const int EndOfWhiteSpace = WhiteSpace + 1;
         public const int Text = EndOfWhiteSpace + 1;

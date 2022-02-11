@@ -4,9 +4,9 @@
     {
         public static readonly Token EndOfReader = new(TokenType.EndOfReader);
         public static readonly Token FieldDelimiter = new(TokenType.FieldDelimiter);
-        public static readonly Token EndOfRecord = new(TokenType.RecordDelimiter);
-        public static readonly Token Quote = new(TokenType.QuoteDelimiter);
-        public static readonly Token Escape = new(TokenType.EscapeDelimiter);
+        public static readonly Token EndOfRecord = new(TokenType.EndOfRecord);
+        public static readonly Token Quote = new(TokenType.Quote);
+        public static readonly Token Escape = new(TokenType.Escape);
 
         public Token(TokenType type)
         {

@@ -4,9 +4,9 @@
     {
         EndOfReader,
         FieldDelimiter,
-        RecordDelimiter,
-        QuoteDelimiter,
-        EscapeDelimiter,
+        EndOfRecord,
+        Quote,
+        Escape,
         Text,
         WhiteSpace,
     }

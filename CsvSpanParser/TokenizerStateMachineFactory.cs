@@ -38,6 +38,18 @@ namespace CsvSpanParser
                 BuildStartState(builder, tree);
                 BuildWhiteSpaceState(builder, tree);
                 BuildTextState(builder, tree);
+
+                builder.From(FlexableTokenizerTokenState.FieldDelimiter)
+                    .Default(FlexableTokenizerTokenState.EndOfFieldDelimiter);
+
+                builder.From(FlexableTokenizerTokenState.EndOfRecord)
+                    .Default(FlexableTokenizerTokenState.EndOfEndOfRecord);
+
+                builder.From(FlexableTokenizerTokenState.Quote)
+                    .Default(FlexableTokenizerTokenState.EndOfQuote);
+
+                builder.From(FlexableTokenizerTokenState.Escape)
+                    .Default(FlexableTokenizerTokenState.EndOfEscape);
             });
         }
 
@@ -58,11 +70,10 @@ namespace CsvSpanParser
         private static void BuildStartState(IStateMachineTransitionMapBuilder<int, char> builder, Tree<int> tree)
         {
             ITransitionMapBuilder<int, char> startBuilder = builder.From(FlexableTokenizerTokenState.Start);
+            
             int stateId = FlexableTokenizerTokenState.StartOfAdditionalStates;
             foreach (var node in tree)
-            {
                 BuildTransitions(node, startBuilder, ref stateId);
-            }
 
             startBuilder
                 .When((c) => char.IsWhiteSpace(c), FlexableTokenizerTokenState.WhiteSpace)
@@ -128,30 +139,81 @@ namespace CsvSpanParser
         private static void BuildTransitions(TreeNode<int> node, ITransitionMapBuilder<int, char> currentMapBuilder, ref int stateId)
         {
             // If this node has a value then it should be treated as a final node
-            // This does break instances where a delimiter may be the start of another delimiter
-            // Ex. <Foo vs. <FooBar, <FooBar will never be hit since <Foo finished first
-            // If we could have a sub state, then the parser would be able to read forward and gracefully
-            // fall back.
-            // TODO Figure out how to hold onto a "Potential state" if a larger state doesn't workout (Substates?)
-            if (node.Values.Length > 0)
+            // This breaks instances where a control string may be the start of another control string
+            // Ex. " vs. "", " will be caught but not ""
+            // Ex 2. <Foo vs. <FooBar, <FooBar will never be hit since <Foo finished first
+            // Need to build states to check for longer control strings
+            if (node.HasValue)
             {
-                currentMapBuilder.When(node.Key, node.Values[0]);
-
-                // If this whole branch is whitespace then add checks for WhiteSpace situations
-                if (node.BranchIsWhiteSpace)
+                if (node.HasChildren)
                 {
-                    TreeNode<int> rootNode = node.Root;
+                    // Build follow-up states to check for longer control strings
+                    // Ex. " vs. ""
+                    //
+                    // We already matched on ", so now we need a state to possibly fall back to " if "" doesn't work out
+                    //
+                    // builder.From([State id for "])
+                    //  .When('"', [Escape child node].Value) // IE. FlexableTokenizerTokenState.EndOfEscape
+                    //  .Default(node.Value);
+                    //
+                    //-------------------------------------------------------------------------------
+                    // Ex 2. <Foo vs. <FooB vs. <FooBar
+                    //
+                    // We already matched on <Foo
+                    // so now we need states to possibly fall back to <Foo if <FooB fails
+                    // or <FooB if <FooBar fails
+                    //
+                    // currentMapBuilder.When('o', [State id for second o]);
+                    //
+                    // builder.From([State id for second o])
+                    //  .When('B', [State id for B])
+                    //  .Default(node.Value);
+                    //
+                    // builder.From([State id for second B])
+                    //  .When('a', [State id for a])
+                    //  .Default([<FooB node].Value);
+                    //
+                    // builder.From([State id for a])
+                    //  .When('r', [<FooBar node].Value)
+                    //  .Default([<FooB node].Value);
+                    //
+                    // etc.
 
-                    // We might be starting another one of these branches \r\r\n = \r {whitespace} \r\n {record}
-                    currentMapBuilder.When(rootNode.Key, FlexableTokenizerTokenState.EndOfWhiteSpace);
+                    currentMapBuilder.When(node.Key, stateId);
+                    var subStateBuilder = currentMapBuilder.StateMachineTransitionMapBuilder.From(stateId++);
 
-                    // Or there could be some other type of whitespace character \r\t = {whitespace}
-                    currentMapBuilder.When(c => char.IsWhiteSpace(c), FlexableTokenizerTokenState.WhiteSpace);
+                    foreach (var childNode in node)
+                    {
+                        BuildTransitions(childNode, subStateBuilder, ref stateId);
+                        subStateBuilder.Default(node.Value);
+                    }
+                }
+                else
+                {
+                    // If this node had no children, then we need to switch to a dummy state
+                    // to ensure the character is read
+                    currentMapBuilder.When(node.Key, stateId);
+
+                    // The dummy state just defaults to the final state from the node Value
+                    currentMapBuilder.StateMachineTransitionMapBuilder.From(stateId++)
+                        .Default(node.Value);
+
+                    // If this whole branch is whitespace then add checks for WhiteSpace situations
+                    if (node.BranchIsWhiteSpace)
+                    {
+                        TreeNode<int> rootNode = node.Root;
+
+                        // We might be starting another one of these branches \r\r\n = \r {whitespace} \r\n {record}
+                        currentMapBuilder.When(rootNode.Key, FlexableTokenizerTokenState.EndOfWhiteSpace);
+
+                        // Or there could be some other type of whitespace character \r\t = {whitespace}
+                        currentMapBuilder.When(c => char.IsWhiteSpace(c), FlexableTokenizerTokenState.WhiteSpace);
+                    }
                 }
             }
             else
             {
-                // We have children, so this is just an intermediate node
+                // If we don't have a value then this is just an intermediate node and must have children
                 currentMapBuilder.When(node.Key, stateId);
 
                 currentMapBuilder = currentMapBuilder.StateMachineTransitionMapBuilder.From(stateId);

@@ -30,7 +30,7 @@ namespace CsvSpanParser.StateMachine
 
         public TState DefaultTransitionState { get; private set; }
 
-        public bool HasDefaultTransitionState => EqualityComparer<TState>.Default.Equals(DefaultTransitionState, State);
+        public bool HasDefaultTransitionState => !EqualityComparer<TState>.Default.Equals(DefaultTransitionState, State);
 
         ITransitionMapBuilder<TState, TInput> ITransitionMapBuilder<TState, TInput>.RootBuilder => RootBuilder;
 
