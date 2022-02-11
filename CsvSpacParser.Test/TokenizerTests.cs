@@ -72,5 +72,37 @@ namespace CsvSpanParser.Test
 
             Assert.AreEqual(Token.EndOfReader, tokenizer.ReadToken());
         }
+
+        [TestMethod]
+        public void MultipleSharedDelimitersCsvFlexable()
+        {
+            const string Csv = "123<Foo <FooB456<Foo789<FooB <FooABC<FooBar";
+            var tokenizer = new FlexableTokenizer(new StringReader(Csv), new TokenizerConfig("<Foo", "<FooBar", "<FooB"));
+
+            var expectedTokens = new[]
+            {
+                new Token(TokenType.Text, "123"),
+                Token.FieldDelimiter,
+                new Token(TokenType.WhiteSpace, " "),
+                Token.Quote,
+                new Token(TokenType.Text, "456"),
+                Token.FieldDelimiter,
+                new Token(TokenType.Text, "789"),
+                Token.Quote,
+                new Token(TokenType.WhiteSpace, " "),
+                Token.FieldDelimiter,
+                new Token(TokenType.Text, "ABC"),
+                Token.EndOfRecord,
+                Token.EndOfReader
+            };
+
+            for (int i = 0; i < expectedTokens.Length; i++)
+            {
+                Token token = tokenizer.ReadToken();
+                Assert.AreEqual(expectedTokens[i], token);
+            }
+
+            Assert.AreEqual(Token.EndOfReader, tokenizer.ReadToken());
+        }
     }
 }

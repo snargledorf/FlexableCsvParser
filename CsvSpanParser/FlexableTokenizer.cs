@@ -19,6 +19,11 @@ namespace CsvSpanParser
             stateMachine = TokenizerStateMachineFactory.CreateTokenizerStateMachine(config);
         }
 
+        protected override void ValidateConfig(TokenizerConfig config)
+        {
+            // NoOp
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override Token ReadToken()
         {
@@ -69,6 +74,9 @@ namespace CsvSpanParser
                 else
                     valueBuilder.Append(workingBuffer);
             }
+
+            if (state != FlexableTokenizerTokenState.Start && stateMachine.TryGetDefaultForState(state, out int newState))
+                state = newState;
 
             return state switch
             {

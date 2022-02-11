@@ -17,6 +17,11 @@ namespace CsvSpanParser
             Reader = reader;
             Config = config;
 
+            ValidateConfig(config);
+        }
+
+        protected virtual void ValidateConfig(TokenizerConfig config)
+        {
             var fieldDelimiterChar = config.FieldDelimiter[0];
             if (fieldDelimiterChar != ',' || config.FieldDelimiter.Length > 1)
                 throw new ArgumentException("Field delimiter must be ,");
