@@ -1,7 +1,20 @@
-﻿namespace CsvSpanParser.StateMachine
+﻿using System.Linq.Expressions;
+
+namespace CsvSpanParser.StateMachine
 {
-    internal record Transition<TState, TInput>(Func<TInput, bool> CheckInput, TState NewState)
+    internal class Transition<TState, TInput>
         where TState : notnull
-        where TInput : notnull;
+        where TInput : notnull
+    {
+        public Transition(Expression conditions, TState newState)
+        {
+            Condition = conditions;
+            NewState = newState;
+        }
+
+        public Expression Condition { get; }
+
+        public TState NewState { get; set; }
+    }
 
 }

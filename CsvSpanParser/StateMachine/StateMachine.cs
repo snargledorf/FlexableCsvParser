@@ -1,25 +1,25 @@
-﻿namespace CsvSpanParser.StateMachine
+﻿using System.Runtime.CompilerServices;
+
+namespace CsvSpanParser.StateMachine
 {
     internal sealed class StateMachine<TState, TInput> : IStateMachine<TState, TInput>
         where TState : notnull
         where TInput : notnull
     {
-        private readonly IStateMapsCollection<TState, TInput> statesMap;
+        private TryTransitionDelegate<TState, TInput> tryTransitions;
 
-        public StateMachine(Action<IStateMapsCollectionBuilder<TState, TInput>> buildStates)
+        public StateMachine(Action<IStateMachineTransitionMapBuilder<TState, TInput>> buildStates)
         {
-            var statesMapBuilder = new StateMapsCollectionBuilder<TState, TInput>();
-            buildStates(statesMapBuilder);
-            statesMap = statesMapBuilder.Build();
+            var stateMachineConfig = new StateMachineTransitionMapBuilder<TState, TInput>();
+            buildStates(stateMachineConfig);
+            IStateMachineTransitionMap<TState, TInput> stateMachineTransitionMap = stateMachineConfig.Build();
+            tryTransitions = StateMachineTransitionMapExpressionFactory<TState, TInput>.BuildExpression(stateMachineTransitionMap).Compile();
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryTransition(TState state, TInput input, out TState? newState)
         {
-            if (statesMap.TryGetMapForState(state, out IStateMap<TState, TInput> map))
-                return map.TryGetNewState(input, out newState);
-            
-            newState = default;
-            return false;
+            return tryTransitions(state, input, out newState);
         }
     }
 }
