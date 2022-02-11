@@ -51,7 +51,7 @@ namespace TestHarness
 
         private static void Tokenize(TokenizerConfig config, StreamReader reader)
         {
-            var tokenizer = new Tokenizer(reader, config);
+            var tokenizer = new FlexableTokenizer(reader, config);
 
             while (tokenizer.ReadToken().Type != TokenType.EndOfReader)
             {

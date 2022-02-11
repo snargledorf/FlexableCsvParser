@@ -6,7 +6,7 @@ namespace CsvSpanParser.StateMachine
         where TState : notnull
         where TInput : notnull
     {
-        public static TryTransitionDelegate<TState, TInput> BuildExpression(IStateMachineTransitionMap<TState, TInput> map)
+        public static Expression<TryTransitionDelegate<TState, TInput>> BuildExpression(IStateMachineTransitionMap<TState, TInput> map)
         {
             ParameterExpression stateParam = Expression.Parameter(typeof(TState));
             ParameterExpression inputParam = Expression.Parameter(typeof(TInput));
@@ -30,9 +30,7 @@ namespace CsvSpanParser.StateMachine
                 Expression.Throw(Expression.Constant(new ArgumentException("Invalid state"))),
                 Expression.Label(returnTarget, Expression.Constant(false)));
 
-            Expression<TryTransitionDelegate<TState, TInput>> expression =
-                Expression.Lambda<TryTransitionDelegate<TState, TInput>>(body, stateParam, inputParam, outNewStateParam);
-            return expression.Compile();
+            return Expression.Lambda<TryTransitionDelegate<TState, TInput>>(body, stateParam, inputParam, outNewStateParam);
         }
     }
 }

@@ -13,7 +13,7 @@ namespace CsvSpanParser.StateMachine
             var stateMachineConfig = new StateMachineTransitionMapBuilder<TState, TInput>();
             buildStates(stateMachineConfig);
             IStateMachineTransitionMap<TState, TInput> stateMachineTransitionMap = stateMachineConfig.Build();
-            tryTransitions = StateMachineTransitionMapExpressionFactory<TState, TInput>.BuildExpression(stateMachineTransitionMap);
+            tryTransitions = StateMachineTransitionMapExpressionFactory<TState, TInput>.BuildExpression(stateMachineTransitionMap).Compile();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
