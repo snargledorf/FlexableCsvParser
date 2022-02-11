@@ -4,18 +4,18 @@
         where TState : notnull
         where TInput : notnull
     {
-        private readonly List<TransitionMapBuilder<TState, TInput>> transitionMapBuilders = new();
+        private readonly Dictionary<TState, TransitionMapBuilder<TState, TInput>> transitionMapBuilders = new();
 
         public IStateMachineTransitionMap<TState, TInput> Build()
         {
-            return new StateMachineTransitionMap<TState, TInput>(transitionMapBuilders.Select(mp => mp.Build()));
+            return new StateMachineTransitionMap<TState, TInput>(transitionMapBuilders.Values.Select(mp => mp.Build()));
         }
 
         public ITransitionMapBuilder<TState, TInput> From(TState state)
         {
-            TransitionMapBuilder<TState, TInput> stateMapBuilder = new(state, this);
-            transitionMapBuilders.Add(stateMapBuilder);
-            return stateMapBuilder;
+            return transitionMapBuilders.ContainsKey(state)
+                ? transitionMapBuilders[state]
+                : transitionMapBuilders[state] = new(state, this);
         }
     }
 }

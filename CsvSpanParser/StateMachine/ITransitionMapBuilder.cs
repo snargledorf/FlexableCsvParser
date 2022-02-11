@@ -16,6 +16,8 @@ namespace CsvSpanParser.StateMachine
 
         ITransitionMapBuilder<TState, TInput> When(TInput input, TState newState);
 
-        void Default(TState state);
+        ITransitionMapBuilder<TState, TInput> GotoWhen(TState newState, params TInput[] input);
+
+        ITransitionMapBuilder<TState, TInput> Default(TState state);
     }
 }

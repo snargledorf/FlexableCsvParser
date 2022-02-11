@@ -50,9 +50,18 @@ namespace CsvSpanParser.StateMachine
             return this;
         }
 
-        public void Default(TState newState)
+        public ITransitionMapBuilder<TState, TInput> GotoWhen(TState newState, params TInput[] inputs)
+        {
+            foreach (var input in inputs)
+                When(input, newState);
+
+            return this;
+        }
+
+        public ITransitionMapBuilder<TState, TInput> Default(TState newState)
         {
             RootBuilder.DefaultTransitionState = newState;
+            return this;
         }
 
         public TransitionMap<TState, TInput> Build()
