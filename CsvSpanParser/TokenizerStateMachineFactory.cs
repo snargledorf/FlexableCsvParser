@@ -1,4 +1,6 @@
-﻿using CsvSpanParser.StateMachine;
+﻿using System.Linq.Expressions;
+
+using CsvSpanParser.StateMachine;
 
 namespace CsvSpanParser
 {
@@ -67,45 +69,59 @@ namespace CsvSpanParser
                 .Default(FlexableTokenizerTokenState.Text);
         }
 
-        // Wants to build this -
-        // .When((c) => c == '\r' || !char.IsWhiteSpace(c), FlexableTokenizerTokenState.EndOfWhiteSpace);
-        //
-        // Actually builds this -
-        // .When(char.IsWhiteSpace(c), FlexableTokenizerTokenState.EndOfText)
-        // .When(',', FlexableTokenizerTokenState.EndOfText)
-        // .When('"', FlexableTokenizerTokenState.EndOfText)
+
+        // Builds this -
+        // .When('\r', FlexableTokenizerTokenState.EndOfWhiteSpace)
+        // .When(!char.IsWhiteSpace(c), FlexableTokenizerTokenState.EndOfWhiteSpace)
         private static void BuildWhiteSpaceState(IStateMachineTransitionMapBuilder<int, char> builder, Tree<int> tree)
         {
-            ITransitionMapBuilder<int, char> whiteSpaceBuilder = builder.From(FlexableTokenizerTokenState.WhiteSpace).When(c => !char.IsWhiteSpace(c), FlexableTokenizerTokenState.EndOfWhiteSpace);
-
-            // Workaround
-            // TODO Figure out how to create an OR expression since it's probably faster
-            // Ex. .When((c) => c == '\r' || !char.IsWhiteSpace(c), FlexableTokenizerTokenState.EndOfWhiteSpace);
-            foreach (var node in tree)
-            {
-                if (node.BranchIsWhiteSpace)
-                    whiteSpaceBuilder.When(node.Key, FlexableTokenizerTokenState.EndOfWhiteSpace);
-            }
+            BuildTextOrWhiteSpaceState(builder, tree, true);
         }
 
-        // Wants to build this -
-        // .When((c) => c == ',' || c == '"' || char.IsWhiteSpace(c), FlexableTokenizerTokenState.EndOfText);
-        //
-        // Actually builds this -
-        // .When(char.IsWhiteSpace(c), FlexableTokenizerTokenState.EndOfText)
+        // Builds this -
         // .When(',', FlexableTokenizerTokenState.EndOfText)
         // .When('"', FlexableTokenizerTokenState.EndOfText)
+        // .When(char.IsWhiteSpace(c), FlexableTokenizerTokenState.EndOfText)
         private static void BuildTextState(IStateMachineTransitionMapBuilder<int, char> builder, Tree<int> tree)
         {
-            ITransitionMapBuilder<int, char> textBuilder = builder.From(FlexableTokenizerTokenState.Text).When(c => char.IsWhiteSpace(c), FlexableTokenizerTokenState.EndOfText);
+            BuildTextOrWhiteSpaceState(builder, tree, false);
+        }
 
-            // Workaround
-            // TODO Figure out how to create an OR expression since it's probably faster
-            // Ex. .When((c) => c == '"' || char.IsWhiteSpace(c), FlexableTokenizerTokenState.EndOfText);
+
+        // Builds this -
+        // .When(',', FlexableTokenizerTokenState.EndOfText)
+        // .When('"', FlexableTokenizerTokenState.EndOfText)
+        // .When(char.IsWhiteSpace(c), FlexableTokenizerTokenState.EndOfText)
+        // Or this -
+        // .When('\r', FlexableTokenizerTokenState.EndOfText)
+        // .When(!char.IsWhiteSpace(c), FlexableTokenizerTokenState.EndOfWhiteSpace)
+        private static void BuildTextOrWhiteSpaceState(IStateMachineTransitionMapBuilder<int, char> builder, Tree<int> tree, bool whiteSpace)
+        {
+            var currentState = whiteSpace ? FlexableTokenizerTokenState.WhiteSpace : FlexableTokenizerTokenState.Text;
+            var nextState = whiteSpace ? FlexableTokenizerTokenState.EndOfWhiteSpace : FlexableTokenizerTokenState.EndOfText;
+
+            ITransitionMapBuilder<int, char> textBuilder = builder.From(currentState);
+
             foreach (var node in tree)
             {
-                if (!node.BranchIsWhiteSpace)
-                    textBuilder.When(node.Key, FlexableTokenizerTokenState.EndOfText);
+                if (whiteSpace)
+                {
+                    if (node.BranchIsWhiteSpace)
+                        textBuilder.When(node.Key, nextState);
+                }
+                else if (!node.BranchIsWhiteSpace)
+                    textBuilder.When(node.Key, nextState);
+            }
+
+            Expression<Func<char, bool>> isWhiteSpaceExpresion = whiteSpace
+                ? GetExpression((c) => !char.IsWhiteSpace(c))
+                : GetExpression((c) => char.IsWhiteSpace(c));
+
+            textBuilder.When(isWhiteSpaceExpresion, nextState);
+
+            static Expression<Func<char, bool>> GetExpression(Expression<Func<char, bool>> expression)
+            {
+                return expression;
             }
         }
 
@@ -113,6 +129,9 @@ namespace CsvSpanParser
         {
             // If this node has a value then it should be treated as a final node
             // This does break instances where a delimiter may be the start of another delimiter
+            // Ex. <Foo vs. <FooBar, <FooBar will never be hit since <Foo finished first
+            // If we could have a sub state, then the parser would be able to read forward and gracefully
+            // fall back.
             // TODO Figure out how to hold onto a "Potential state" if a larger state doesn't workout (Substates?)
             if (node.Values.Length > 0)
             {
@@ -147,12 +166,12 @@ namespace CsvSpanParser
         private static Tree<int> CreateDelimiterConfigTree(TokenizerConfig config)
         {
             var delimitersToStates = new[]
-                            {
-            new KeyValuePair<string, int>(config.FieldDelimiter, FlexableTokenizerTokenState.EndOfFieldDelimiter),
-            new KeyValuePair<string, int>(config.RecordDelimiter, FlexableTokenizerTokenState.EndOfEndOfRecord),
-            new KeyValuePair<string, int>(config.QuoteDelimiter, FlexableTokenizerTokenState.EndOfQuote),
-            new KeyValuePair<string, int>(config.EscapeDelimiter, FlexableTokenizerTokenState.EndOfEscape),
-        };
+            {
+                new KeyValuePair<string, int>(config.FieldDelimiter, FlexableTokenizerTokenState.EndOfFieldDelimiter),
+                new KeyValuePair<string, int>(config.RecordDelimiter, FlexableTokenizerTokenState.EndOfEndOfRecord),
+                new KeyValuePair<string, int>(config.QuoteDelimiter, FlexableTokenizerTokenState.EndOfQuote),
+                new KeyValuePair<string, int>(config.EscapeDelimiter, FlexableTokenizerTokenState.EndOfEscape),
+            };
 
             return new Tree<int>(delimitersToStates);
         }
