@@ -6,7 +6,7 @@ namespace CsvSpanParser.StateMachine
         where TState : notnull
         where TInput : notnull
     {
-        internal static BlockExpression BuildExpression(ITransitionMap<TState, TInput> map, ParameterExpression inputParam, ParameterExpression outNewStateParam, LabelTarget returnTarget)
+        internal static BlockExpression BuildTryGetValueExpression(ITransitionMap<TState, TInput> map, ParameterExpression inputParam, ParameterExpression outNewStateParam, LabelTarget returnTarget)
         {
             List<Expression> transitionExpressions = new();
 
@@ -62,6 +62,17 @@ namespace CsvSpanParser.StateMachine
             }
 
             return Expression.Block(transitionExpressions);
+        }
+
+        internal static BlockExpression BuildGetDefaultExpression(ITransitionMap<TState, TInput> map, ParameterExpression outNewStateParam, LabelTarget returnTarget)
+        {
+            if (!map.HasDefaultTransitionState)
+                throw new InvalidOperationException("Transition map doesn't have a default state");
+
+            return Expression.Block(
+                Expression.Assign(outNewStateParam, Expression.Constant(map.Root.DefaultTransitionState)),
+                Expression.Return(returnTarget, Expression.Constant(true))
+            );
         }
     }
 }

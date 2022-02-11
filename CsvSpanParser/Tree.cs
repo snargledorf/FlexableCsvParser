@@ -37,7 +37,8 @@ namespace CsvSpanParser
                 }
 
                 // This is the final node in this branch, add the value
-                currentNode?.AddValue(kv.Value);
+                if (currentNode != null)
+                    currentNode.Value = kv.Value;
             }
         }
 

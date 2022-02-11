@@ -5,8 +5,7 @@ namespace CsvSpanParser
     internal sealed class TreeNode<T> : IEnumerable<TreeNode<T>>
     {
         private readonly Dictionary<char, TreeNode<T>> children = new();
-
-        private readonly List<T> values = new();
+        private T? value;
 
         public TreeNode(char key, TreeNode<T>? parent = null)
         {
@@ -18,7 +17,20 @@ namespace CsvSpanParser
 
         public TreeNode<T>? Parent { get; }
 
-        public T[] Values => values.ToArray();
+        public T? Value
+        {
+            get => value;
+            set
+            {
+                if (HasValue)
+                    throw new InvalidOperationException("TreeNode already has a value");
+
+                this.value = value;
+                HasValue = true;
+            }
+        }
+
+        public bool HasChildren => children.Count > 0;
 
         public bool BranchIsWhiteSpace => char.IsWhiteSpace(Key) && (Parent?.BranchIsWhiteSpace ?? true);
 
@@ -34,10 +46,7 @@ namespace CsvSpanParser
             children.Add(c, treeNode);
         }
 
-        public void AddValue(T value)
-        {
-            values.Add(value);
-        }
+        public bool HasValue { get; private set; }
 
         public override string ToString()
         {
