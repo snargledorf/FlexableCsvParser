@@ -12,18 +12,19 @@ namespace CsvSpanParser.StateMachine
 
         internal TransitionMapBuilder<TState, TInput>? elseBuilder;
 
-        public TransitionMapBuilder(TState state)
+        public TransitionMapBuilder(TState state, IStateMachineTransitionMapBuilder<TState, TInput> stateMachineTransitionMapBuilder)
         {
             State = DefaultTransitionState = state;
+            StateMachineTransitionMapBuilder = stateMachineTransitionMapBuilder;
         }
 
-        private TransitionMapBuilder(TState state, TransitionMapBuilder<TState, TInput> parentBuilder)
-            : this(state)
+        private TransitionMapBuilder(TState state, TransitionMapBuilder<TState, TInput> parentBuilder, IStateMachineTransitionMapBuilder<TState, TInput> stateMachineTransitionMapBuilder)
+            : this(state, stateMachineTransitionMapBuilder)
         {
             this.parentBuilder = parentBuilder;
         }
 
-        public ITransitionMapBuilder<TState, TInput> Else => elseBuilder ??= new TransitionMapBuilder<TState, TInput>(State, this);
+        public ITransitionMapBuilder<TState, TInput> Else => elseBuilder ??= new TransitionMapBuilder<TState, TInput>(State, this, StateMachineTransitionMapBuilder);
 
         public TState State { get; }
 
@@ -34,6 +35,8 @@ namespace CsvSpanParser.StateMachine
         ITransitionMapBuilder<TState, TInput> ITransitionMapBuilder<TState, TInput>.RootBuilder => RootBuilder;
 
         public TransitionMapBuilder<TState, TInput> RootBuilder => parentBuilder?.RootBuilder ?? this;
+
+        public IStateMachineTransitionMapBuilder<TState, TInput> StateMachineTransitionMapBuilder { get; }
 
         public ITransitionMapBuilder<TState, TInput> When(Expression<Func<TInput, bool>> condition, TState newState)
         {

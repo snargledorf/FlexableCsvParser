@@ -1,6 +1,6 @@
 ﻿namespace CsvSpanParser.StateMachine
 {
-    internal class StateMachineTransitionMapBuilder<TState, TInput> : IStateMachineTransitionMapBuilder<TState, TInput> 
+    internal class StateMachineTransitionMapBuilder<TState, TInput> : IStateMachineTransitionMapBuilder<TState, TInput>
         where TState : notnull
         where TInput : notnull
     {
@@ -13,7 +13,7 @@
 
         public ITransitionMapBuilder<TState, TInput> From(TState state)
         {
-            TransitionMapBuilder<TState, TInput> stateMapBuilder = new(state);
+            TransitionMapBuilder<TState, TInput> stateMapBuilder = new(state, this);
             transitionMapBuilders.Add(stateMapBuilder);
             return stateMapBuilder;
         }

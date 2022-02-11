@@ -16,26 +16,7 @@ namespace CsvSpanParser
         public FlexableTokenizer(TextReader reader, TokenizerConfig config)
             : base(reader, config)
         {
-            stateMachine = new StateMachine<int, char>(builder =>
-            {
-                builder.From(FlexableTokenizerTokenState.Start)
-                    .When(',', FlexableTokenizerTokenState.EndOfFieldDelimiter)
-                    .When('\r', FlexableTokenizerTokenState.StartOfEndOfRecord)
-                    .When('"', FlexableTokenizerTokenState.EndOfFieldDelimiter)
-                    .When((c) => char.IsWhiteSpace(c), FlexableTokenizerTokenState.WhiteSpace)
-                    .Default(FlexableTokenizerTokenState.Text);
-
-                builder.From(FlexableTokenizerTokenState.StartOfEndOfRecord)
-                    .When('\n', FlexableTokenizerTokenState.EndOfEndOfRecord)
-                    .When('\r', FlexableTokenizerTokenState.EndOfWhiteSpace)
-                    .When((c) => char.IsWhiteSpace(c), FlexableTokenizerTokenState.WhiteSpace);
-
-                builder.From(FlexableTokenizerTokenState.WhiteSpace)
-                    .When((c) => c == '\r' || !char.IsWhiteSpace(c), FlexableTokenizerTokenState.EndOfWhiteSpace);
-
-                builder.From(FlexableTokenizerTokenState.Text)
-                    .When((c) => c == ',' || c == '"' || char.IsWhiteSpace(c), FlexableTokenizerTokenState.EndOfText);
-            });
+            stateMachine = TokenizerStateMachineFactory.CreateTokenizerStateMachine(config);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -135,6 +116,6 @@ namespace CsvSpanParser
         public const int EndOfWhiteSpace = WhiteSpace + 1;
         public const int Text = EndOfWhiteSpace + 1;
         public const int EndOfText = Text + 1;
-        public const int StartOfDelimiterStates = EndOfText + 1;
+        public const int StartOfAdditionalStates = EndOfText + 1;
     }
 }

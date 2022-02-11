@@ -174,9 +174,9 @@ namespace CsvSpanParser
 
 			return readBufferLength != 0;
 		}
-	}
+    }
 
-	struct TokenState
+    struct TokenState
 	{
 		public const int Start = 0;
 		public const int EndOfFieldDelimiter = Start + 1;
