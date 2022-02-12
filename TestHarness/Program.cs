@@ -24,8 +24,8 @@ namespace TestHarness
 
             //await ReadLinesAsync(reader).ConfigureAwait(false);
             //await Task.Factory.StartNew(() => ReadLines(reader), TaskCreationOptions.LongRunning).ConfigureAwait(false);
-            await Task.Factory.StartNew(() => Tokenize(reader), TaskCreationOptions.LongRunning).ConfigureAwait(false);
-            //await Task.Factory.StartNew(() => Parse(reader), TaskCreationOptions.LongRunning).ConfigureAwait(false);
+            //await Task.Factory.StartNew(() => Tokenize(reader), TaskCreationOptions.LongRunning).ConfigureAwait(false);
+            await Task.Factory.StartNew(() => Parse(reader), TaskCreationOptions.LongRunning).ConfigureAwait(false);
 
             stopwatch.Stop();
 
@@ -46,7 +46,7 @@ namespace TestHarness
 
         private static void Tokenize(StreamReader reader)
         {
-            var tokenizer = new FlexableTokenizer(Delimiters.Default);
+            var tokenizer = new RFC4180Tokenizer();
 
             while (tokenizer.NextToken(reader).Type != TokenType.EndOfReader)
             {
@@ -55,7 +55,7 @@ namespace TestHarness
 
         private static void Parse(StreamReader reader)
         {
-            var parser = new CsvParser(reader, new(endOfRecord:"\n"));
+            var parser = new CsvParser(reader);
 
             while (parser.TryReadRecord(out string[] _))
             {
