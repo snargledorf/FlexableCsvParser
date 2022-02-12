@@ -30,5 +30,13 @@ namespace CsvSpanParser
             valueBuilder = null;
             return token;
         }
+
+        public static Tokenizer For(Delimiters delimiters)
+        {
+            if (delimiters.IsRFC4180Compliant)
+                return RFC4180;
+
+            return new FlexableTokenizer(delimiters);
+        }
     }
 }

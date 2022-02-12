@@ -16,11 +16,17 @@
             EndOfRecord = endOfRecord;
             Quote = quote;
             Escape = escape;
+
+            IsRFC4180Compliant = Field == ","
+                && (EndOfRecord == "\r\n" || EndOfRecord == "\r" || EndOfRecord == "\n")
+                && (string.IsNullOrEmpty(Quote) || Quote == "\"")
+                && (string.IsNullOrEmpty(Escape) || Escape == "\"\"");
         }
 
         public string Field { get; }
         public string EndOfRecord { get; }
         public string Quote { get; }
         public string Escape { get; }
+        public bool IsRFC4180Compliant { get; }
     }
 }

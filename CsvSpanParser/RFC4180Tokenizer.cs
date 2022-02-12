@@ -6,8 +6,8 @@ namespace CsvSpanParser
     public class RFC4180Tokenizer : Tokenizer
     {
         private readonly Memory<char> readBuffer = new char[4096];
-        private int readBufferIndex = 0;
-        private int readBufferLength = 0;
+        private int readBufferIndex;
+        private int readBufferLength;
 
         public RFC4180Tokenizer()
             : base(Delimiters.RFC4180)
@@ -50,7 +50,6 @@ namespace CsvSpanParser
                                 '\r' => TokenState.StartOfEndOfRecord,
                                 '\n' => TokenState.EndOfEndOfRecord,
                                 '"' => TokenState.StartOfEscape,
-                                '\\' => TokenState.EndOfEscape,
                                 _ => char.IsWhiteSpace(c) ? TokenState.WhiteSpace : TokenState.Text
                             };
                             break;
@@ -61,7 +60,7 @@ namespace CsvSpanParser
                             break;
 
                         case TokenState.Text:
-                            if (char.IsWhiteSpace(c) || c == ',' || c == '"' || c == '\\')
+                            if (char.IsWhiteSpace(c) || c == ',' || c == '"')
                                 return CreateToken(TokenType.Text, ref valueBuilder, workingBuffer[..workingBufferIndex]);
                             break;
 

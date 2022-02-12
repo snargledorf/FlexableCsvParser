@@ -28,7 +28,7 @@ namespace CsvSpanParser.Test
         public void MultipleSharedDelimitersCsvFlexable()
         {
             const string Csv = "123<Foo <FooB456<Foo789<FooB <FooABC<FooBar";
-            var parser = new CsvParser(new StringReader(Csv), new CsvParserConfig("<Foo", "<FooBar", "<FooB"));
+            var parser = new CsvParser(new StringReader(Csv), new("<Foo", "<FooBar", "<FooB"));
 
             var expectedRecod = new[]
             {

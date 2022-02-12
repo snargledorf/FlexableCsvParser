@@ -24,11 +24,16 @@ namespace CsvSpanParser
         }
 
         public CsvParser(TextReader reader, CsvParserConfig config)
+            : this(reader, config, Tokenizer.For(config.Delimiters))
+        {
+        }
+
+        public CsvParser(TextReader reader, CsvParserConfig config, ITokenizer tokenizer)
         {
             this.reader = reader;
             this.config = config;
 
-            tokenizer = new FlexableTokenizer(config.Delimiters);
+            this.tokenizer = tokenizer;
 
             parserStateMachine = CsvParserStateMachineFactory.BuildParserStateMachine(config);
         }
