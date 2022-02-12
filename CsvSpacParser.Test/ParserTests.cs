@@ -43,9 +43,27 @@ namespace CsvSpanParser.Test
         }
 
         [TestMethod]
-        public void SimpleRFC4180EmptyQuotedFieldCsv()
+        public void SimpleRFC4180EmptyQuotedFieldTrailingWhiteSpaceCsv()
         {
             const string Csv = "123, \"\" ,ABC";
+            var parser = new CsvParser(new StringReader(Csv));
+
+            var expectedRecod = new[]
+            {
+                "123",
+                "",
+                "ABC"
+            };
+
+            Assert.IsTrue(parser.TryReadRecord(out string[] record));
+            CollectionAssert.AreEqual(expectedRecod, record);
+            Assert.IsFalse(parser.TryReadRecord(out _));
+        }
+
+        [TestMethod]
+        public void SimpleRFC4180EmptyQuotedFieldCsv()
+        {
+            const string Csv = "123, \"\",ABC";
             var parser = new CsvParser(new StringReader(Csv));
 
             var expectedRecod = new[]
@@ -79,7 +97,7 @@ namespace CsvSpanParser.Test
         }
 
         [TestMethod]
-        public void SimpleRFC4180QuotedTextInQuotedFieldFieldCsv()
+        public void SimpleRFC4180QuotedTextInQuotedFieldCsv()
         {
             const string Csv = "123, \"\"\"Bar\"\"\" ,ABC";
             var parser = new CsvParser(new StringReader(Csv));
@@ -94,6 +112,15 @@ namespace CsvSpanParser.Test
             Assert.IsTrue(parser.TryReadRecord(out string[] record));
             CollectionAssert.AreEqual(expectedRecod, record);
             Assert.IsFalse(parser.TryReadRecord(out _));
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(InvalidDataException))]
+        public void SimpleRFC4180InvalidEscapeAtStartFieldCsv()
+        {
+            const string Csv = "123, \"\"Bar";
+            var parser = new CsvParser(new StringReader(Csv));
+            parser.TryReadRecord(out string[] _);
         }
     }
 }

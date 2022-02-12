@@ -83,7 +83,7 @@ namespace CsvSpanParser
                             break;
 
                         case ParserState.UnexpectedToken:
-                            throw new InvalidOperationException($"Unexpected token: State = {previousState}, Token = {token}, Buffer = {fieldBuilder}");
+                            throw new InvalidDataException($"Unexpected token: State = {previousState}, Token = {token}, Buffer = {fieldBuilder}");
 
                         default:
                             ClearLeadingWhiteSpace();
@@ -110,7 +110,7 @@ namespace CsvSpanParser
                                     break;
 
                                 default:
-                                    throw new InvalidOperationException($"Unexpected token: State = {state}, Token = {token}, Buffer = {fieldBuilder}");
+                                    throw new InvalidDataException($"Unexpected token: State = {state}, Token = {token}, Buffer = {fieldBuilder}");
                             }
                             break;
                         case ParserState.EscapeAfterLeadingEscape:
@@ -118,7 +118,7 @@ namespace CsvSpanParser
                             break;
 
                         default:
-                            throw new InvalidOperationException($"Unexpected state: State = {state}, Token = {token}, Buffer = { fieldBuilder }");
+                            throw new InvalidDataException($"Unexpected state: State = {state}, Token = {token}, Buffer = { fieldBuilder }");
                     }
                 }
             }
