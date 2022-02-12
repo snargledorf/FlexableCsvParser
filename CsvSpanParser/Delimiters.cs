@@ -18,9 +18,9 @@
             Escape = escape;
 
             IsRFC4180Compliant = Field == ","
-                && (EndOfRecord == "\r\n" || EndOfRecord == "\r" || EndOfRecord == "\n")
-                && (string.IsNullOrEmpty(Quote) || Quote == "\"")
-                && (string.IsNullOrEmpty(Escape) || Escape == "\"\"");
+                && EndOfRecord == "\r\n"
+                && Quote == "\""
+                && Escape == "\"\"";
         }
 
         public string Field { get; }
