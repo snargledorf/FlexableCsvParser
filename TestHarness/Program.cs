@@ -68,8 +68,7 @@ namespace TestHarness
 
         private static void Parse(StreamReader reader)
         {
-            var config = new CsvParserConfig();
-            var parser = new CsvParser(reader, config);
+            var parser = new CsvParser(reader, new(endOfRecord:"\n"));
 
             while (parser.TryReadRecord(out string[] _))
             {

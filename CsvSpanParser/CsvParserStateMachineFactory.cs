@@ -32,7 +32,7 @@ namespace CsvSpanParser
                 .When(TokenType.FieldDelimiter, ParserState.EndOfField)
                 .When(TokenType.EndOfRecord, ParserState.EndOfRecord)
                 .When(TokenType.EndOfReader, ParserState.EndOfReader)
-                .When(TokenType.Escape, ParserState.UnexpectedToken);
+                .When(TokenType.Escape, ParserState.LeadingEscape);
         }
 
         private static void BuildUnquotedFieldTransitions(IStateMachineTransitionMapBuilder<ParserState, TokenType> builder)
@@ -57,7 +57,8 @@ namespace CsvSpanParser
                 .When(TokenType.Quote, ParserState.QuotedFieldOpenQuote)
                 .When(TokenType.FieldDelimiter, ParserState.EndOfField)
                 .When(TokenType.EndOfRecord, ParserState.EndOfRecord)
-                .GotoWhen(ParserState.UnexpectedToken, TokenType.Escape, TokenType.WhiteSpace)
+                .When(TokenType.Escape, ParserState.LeadingEscape)
+                .When(TokenType.WhiteSpace, ParserState.UnexpectedToken)
                 .Default(ParserState.EndOfField);
         }
 
@@ -87,6 +88,21 @@ namespace CsvSpanParser
                 .When(TokenType.EndOfRecord, ParserState.EndOfRecord)
                 .GotoWhen(ParserState.UnexpectedToken, TokenType.Text, TokenType.WhiteSpace, TokenType.Escape, TokenType.Quote)
                 .Default(ParserState.EndOfField);
+
+            builder.From(ParserState.LeadingEscape)
+                .When(TokenType.Quote, ParserState.QuotedFieldEscape) // Handles Foo,"""Bar""",Biz
+                .When(TokenType.Escape, ParserState.EscapeAfterLeadingEscape) // Handles Foo,""""" Empty quotes",Biz
+                .When(TokenType.WhiteSpace, ParserState.QuotedFieldTrailingWhiteSpace) // Handles Foo,"" ,Biz
+                .When(TokenType.Text, ParserState.UnexpectedToken)
+                .Default(ParserState.EndOfField); // Handles Foo,"",Biz | Foo,Bar,""
+
+            builder.From(ParserState.EscapeAfterLeadingEscape) // Handles Foo,"""""",Biz
+                .When(TokenType.Escape, ParserState.EscapeAfterLeadingEscape) // Handles Foo,"""""",Biz
+                .When(TokenType.FieldDelimiter, ParserState.EndOfField) // Handles Foo,"""""",Biz
+                .When(TokenType.Quote, ParserState.QuotedFieldEscape)
+                .When(TokenType.WhiteSpace, ParserState.QuotedFieldTrailingWhiteSpace) //  Foo,"""" ,Biz
+                .When(TokenType.Text, ParserState.UnexpectedToken) // Foo,""""Bar,Biz
+                .Default(ParserState.EndOfField); // Foo,"""" | Foo,""""""
         }
     }
 }

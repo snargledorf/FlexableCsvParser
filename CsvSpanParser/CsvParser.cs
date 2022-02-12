@@ -68,6 +68,7 @@ namespace CsvSpanParser
                             fieldBuilder.Append(token.Value);
                             break;
 
+                        case ParserState.EscapeAfterLeadingEscape:
                         case ParserState.QuotedFieldEscape:
                             fieldBuilder.Append(config.Quote);
                             break;
@@ -82,7 +83,7 @@ namespace CsvSpanParser
                             break;
 
                         case ParserState.UnexpectedToken:
-                            throw new InvalidOperationException($"Unexpected token: State = {previousState}, Token = {token}");
+                            throw new InvalidOperationException($"Unexpected token: State = {previousState}, Token = {token}, Buffer = {fieldBuilder}");
 
                         default:
                             ClearLeadingWhiteSpace();
@@ -109,12 +110,15 @@ namespace CsvSpanParser
                                     break;
 
                                 default:
-                                    throw new InvalidOperationException($"Unexpected token: State = {state}, Token = {token}");
+                                    throw new InvalidOperationException($"Unexpected token: State = {state}, Token = {token}, Buffer = {fieldBuilder}");
                             }
+                            break;
+                        case ParserState.EscapeAfterLeadingEscape:
+                            fieldBuilder.Append(config.EndOfRecord);
                             break;
 
                         default:
-                            throw new InvalidOperationException($"Unexpected state: Current State = {state}, Last Token = {token}");
+                            throw new InvalidOperationException($"Unexpected state: State = {state}, Token = {token}, Buffer = { fieldBuilder }");
                     }
                 }
             }

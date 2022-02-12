@@ -41,5 +41,59 @@ namespace CsvSpanParser.Test
             CollectionAssert.AreEqual(expectedRecod, record);
             Assert.IsFalse(parser.TryReadRecord(out _));
         }
+
+        [TestMethod]
+        public void SimpleRFC4180EmptyQuotedFieldCsv()
+        {
+            const string Csv = "123, \"\" ,ABC";
+            var parser = new CsvParser(new StringReader(Csv));
+
+            var expectedRecod = new[]
+            {
+                "123",
+                "",
+                "ABC"
+            };
+
+            Assert.IsTrue(parser.TryReadRecord(out string[] record));
+            CollectionAssert.AreEqual(expectedRecod, record);
+            Assert.IsFalse(parser.TryReadRecord(out _));
+        }
+
+        [TestMethod]
+        public void SimpleRFC4180EscapeAtStartOfQuotedFieldCsv()
+        {
+            const string Csv = "123, \"\"\"\"\"\" ,ABC";
+            var parser = new CsvParser(new StringReader(Csv));
+
+            var expectedRecod = new[]
+            {
+                "123",
+                "\"\"",
+                "ABC"
+            };
+
+            Assert.IsTrue(parser.TryReadRecord(out string[] record));
+            CollectionAssert.AreEqual(expectedRecod, record);
+            Assert.IsFalse(parser.TryReadRecord(out _));
+        }
+
+        [TestMethod]
+        public void SimpleRFC4180QuotedTextInQuotedFieldFieldCsv()
+        {
+            const string Csv = "123, \"\"\"Bar\"\"\" ,ABC";
+            var parser = new CsvParser(new StringReader(Csv));
+
+            var expectedRecod = new[]
+            {
+                "123",
+                "\"Bar\"",
+                "ABC"
+            };
+
+            Assert.IsTrue(parser.TryReadRecord(out string[] record));
+            CollectionAssert.AreEqual(expectedRecod, record);
+            Assert.IsFalse(parser.TryReadRecord(out _));
+        }
     }
 }

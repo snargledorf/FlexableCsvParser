@@ -8,6 +8,7 @@
         EndOfRecord,
         EndOfReader,
         LeadingWhiteSpace,
+        LeadingEscape,
         QuotedFieldOpenQuote,
         QuotedFieldClosingQuote,
         QuotedFieldText,
@@ -16,5 +17,6 @@
         UnexpectedToken,
         QuotedFieldTrailingWhiteSpace,
         UnquotedFieldTrailingWhiteSpace,
+        EscapeAfterLeadingEscape,
     }
 }
