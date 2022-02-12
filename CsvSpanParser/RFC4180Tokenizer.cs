@@ -106,10 +106,8 @@ namespace CsvSpanParser
                     workingBufferIndex++;
                 }
 
-                if (valueBuilder is null)
-                    valueBuilder = new StringBuilder(workingBuffer.Length + 10).Append(workingBuffer);
-                else
-                    valueBuilder.Append(workingBuffer);
+                valueBuilder ??= new StringBuilder(workingBuffer.Length + 80);
+                valueBuilder.Append(workingBuffer);
             }
 
             return state switch

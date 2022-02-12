@@ -73,10 +73,8 @@ namespace CsvSpanParser
                     workingBufferIndex++;
                 } while (workingBufferIndex < workingBuffer.Length);
 
-                if (valueBuilder is null)
-                    valueBuilder = new StringBuilder(workingBuffer.Length + 10).Append(workingBuffer);
-                else
-                    valueBuilder.Append(workingBuffer);
+                valueBuilder ??= new StringBuilder(workingBuffer.Length + 80);
+                valueBuilder.Append(workingBuffer);
             }
 
             if (state != FlexableTokenizerTokenState.Start && stateMachine.TryGetDefaultForState(state, out int newState))
