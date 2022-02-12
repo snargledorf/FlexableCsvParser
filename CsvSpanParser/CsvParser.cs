@@ -6,6 +6,7 @@ namespace CsvSpanParser
 {
     public class CsvParser
     {
+        private readonly TextReader reader;
         private CsvParserConfig config;
 
         private ITokenizer tokenizer;
@@ -24,9 +25,10 @@ namespace CsvSpanParser
 
         public CsvParser(TextReader reader, CsvParserConfig config)
         {
+            this.reader = reader;
             this.config = config;
 
-            tokenizer = CsvParserTokenizerFactory.GetTokenizerForConfig(config.ToTokenizerConfig(), reader);
+            tokenizer = new FlexableTokenizer(config.Delimiters);
 
             parserStateMachine = CsvParserStateMachineFactory.BuildParserStateMachine(config);
         }
@@ -41,7 +43,7 @@ namespace CsvSpanParser
             ParserState previousState;
 
             Token token;
-            while ((token = tokenizer.ReadToken()).Type != TokenType.EndOfReader)
+            while ((token = tokenizer.NextToken(reader)).Type != TokenType.EndOfReader)
             {
                 previousState = state;
                 if (parserStateMachine.TryTransition(state, token.Type, out state))
@@ -70,7 +72,7 @@ namespace CsvSpanParser
 
                         case ParserState.EscapeAfterLeadingEscape:
                         case ParserState.QuotedFieldEscape:
-                            fieldBuilder.Append(config.Quote);
+                            fieldBuilder.Append(config.Delimiters.Quote);
                             break;
 
                         case ParserState.LeadingWhiteSpace:
@@ -102,11 +104,11 @@ namespace CsvSpanParser
                                 case TokenType.WhiteSpace:
                                     fieldBuilder.Append(token.Value);
                                     break;
-                                case TokenType.FieldDelimiter:
-                                    fieldBuilder.Append(config.FieldDelimiter);
+                                case TokenType.Field:
+                                    fieldBuilder.Append(config.Delimiters.Field);
                                     break;
                                 case TokenType.EndOfRecord:
-                                    fieldBuilder.Append(config.EndOfRecord);
+                                    fieldBuilder.Append(config.Delimiters.EndOfRecord);
                                     break;
 
                                 default:
@@ -114,7 +116,7 @@ namespace CsvSpanParser
                             }
                             break;
                         case ParserState.EscapeAfterLeadingEscape:
-                            fieldBuilder.Append(config.EndOfRecord);
+                            fieldBuilder.Append(config.Delimiters.EndOfRecord);
                             break;
 
                         default:
@@ -129,14 +131,12 @@ namespace CsvSpanParser
                 return false;
             }
 
+            previousState = state;
             if (parserStateMachine.TryGetDefaultForState(state, out ParserState defaultState))
                 state = defaultState;
 
-            switch (state)
-            {
-                case ParserState.QuotedFieldText:
-                    throw new Exception("Final quoted field did not have a closing quote");
-            }
+            if (state == ParserState.QuotedFieldText)
+                throw new Exception($"Final quoted field did not have a closing quote: State = {previousState}, Buffer = {fieldBuilder}");
 
             AddCurrentField();
             record = recordBuilder.ToArray();

@@ -1,5 +1,5 @@
 using System.IO;
-
+using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace CsvSpanParser.Test
@@ -11,7 +11,7 @@ namespace CsvSpanParser.Test
         public void SimpleRFC4180Csv()
         {
             const string Csv = "123, \"456,\"\"789\"\"\" ,ABC";
-            var tokenizer = new Tokenizer(new StringReader(Csv), TokenizerConfig.RFC4180);
+            var tokenizer = new RFC4180Tokenizer();
 
             var expectedTokens = new[]
             {
@@ -31,20 +31,15 @@ namespace CsvSpanParser.Test
                 Token.EndOfReader
             };
 
-            for (int i = 0; i < expectedTokens.Length; i++)
-            {
-                Token token = tokenizer.ReadToken();
-                Assert.AreEqual(expectedTokens[i], token);
-            }
-
-            Assert.AreEqual(Token.EndOfReader, tokenizer.ReadToken());
+            Token[] tokens = tokenizer.EnumerateTokens(new StringReader(Csv)).ToArray();
+            CollectionAssert.AreEqual(expectedTokens, tokens);
         }
 
         [TestMethod]
         public void SimpleRFC4180CsvFlexable()
         {
             const string Csv = "123, \"456,\"\"789\"\"\" ,ABC";
-            var tokenizer = new FlexableTokenizer(new StringReader(Csv), TokenizerConfig.RFC4180);
+            var tokenizer = new FlexableTokenizer(Delimiters.RFC4180);
 
             var expectedTokens = new[]
             {
@@ -64,20 +59,15 @@ namespace CsvSpanParser.Test
                 Token.EndOfReader
             };
 
-            for (int i = 0; i < expectedTokens.Length; i++)
-            {
-                Token token = tokenizer.ReadToken();
-                Assert.AreEqual(expectedTokens[i], token);
-            }
-
-            Assert.AreEqual(Token.EndOfReader, tokenizer.ReadToken());
+            Token[] tokens = tokenizer.EnumerateTokens(new StringReader(Csv)).ToArray();
+            CollectionAssert.AreEqual(expectedTokens, tokens);
         }
 
         [TestMethod]
         public void MultipleSharedDelimitersCsvFlexable()
         {
             const string Csv = "123<Foo <FooB456<Foo789<FooB <FooABC<FooBar";
-            var tokenizer = new FlexableTokenizer(new StringReader(Csv), new TokenizerConfig("<Foo", "<FooBar", "<FooB"));
+            var tokenizer = new FlexableTokenizer(new Delimiters("<Foo", "<FooBar", "<FooB"));
 
             var expectedTokens = new[]
             {
@@ -96,13 +86,8 @@ namespace CsvSpanParser.Test
                 Token.EndOfReader
             };
 
-            for (int i = 0; i < expectedTokens.Length; i++)
-            {
-                Token token = tokenizer.ReadToken();
-                Assert.AreEqual(expectedTokens[i], token);
-            }
-
-            Assert.AreEqual(Token.EndOfReader, tokenizer.ReadToken());
+            Token[] tokens = tokenizer.EnumerateTokens(new StringReader(Csv)).ToArray();
+            CollectionAssert.AreEqual(expectedTokens, tokens);
         }
     }
 }

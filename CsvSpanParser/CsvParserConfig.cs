@@ -6,26 +6,20 @@
         public static readonly CsvParserConfig RFC4180 = Default;
 
         public CsvParserConfig()
-            : this(",", "\r\n", "\"", "\"\"")
+            : this(Delimiters.Default)
         {
         }
 
-        public CsvParserConfig(string fieldDelimiter = ",", string endOfRecord = "\r\n", string quote = "\"", string escape = "\"\"")
+        public CsvParserConfig(string field = ",", string endOfRecord = "\r\n", string quote = "\"", string escape = "\"\"")
+            : this(new Delimiters(field, endOfRecord, quote, escape))
         {
-            FieldDelimiter = fieldDelimiter;
-            EndOfRecord = endOfRecord;
-            Quote = quote;
-            Escape = escape;
         }
 
-        public string FieldDelimiter { get; }
-        public string EndOfRecord { get; }
-        public string Quote { get; }
-        public string Escape { get; }
-
-        internal TokenizerConfig ToTokenizerConfig()
+        public CsvParserConfig(Delimiters delimiters)
         {
-            return new TokenizerConfig(FieldDelimiter, EndOfRecord, Quote, Escape);
+            Delimiters = delimiters;
         }
+
+        public Delimiters Delimiters { get; }
     }
 }

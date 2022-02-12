@@ -24,7 +24,6 @@ namespace TestHarness
 
             //await ReadLinesAsync(reader).ConfigureAwait(false);
             //await Task.Factory.StartNew(() => ReadLines(reader), TaskCreationOptions.LongRunning).ConfigureAwait(false);
-            //await Tokenize(reader).ConfigureAwait(false);
             //await Task.Factory.StartNew(() => Tokenize(reader), TaskCreationOptions.LongRunning).ConfigureAwait(false);
             await Task.Factory.StartNew(() => Parse(reader), TaskCreationOptions.LongRunning).ConfigureAwait(false);
 
@@ -45,23 +44,11 @@ namespace TestHarness
             while (reader.ReadLine() != null) ;
         }
 
-        private static async Task TokenizeAsync(StreamReader reader)
-        {
-            var config = new TokenizerConfig();
-            var tokenizer = new Tokenizer(reader, config);
-
-            Token token;
-            while ((token = await tokenizer.ReadTokenAsync().ConfigureAwait(false)).Type != TokenType.EndOfReader)
-            {
-            }
-        }
-
         private static void Tokenize(StreamReader reader)
         {
-            var config = new TokenizerConfig();
-            var tokenizer = new Tokenizer(reader, config);
+            var tokenizer = new RFC4180Tokenizer();
 
-            while (tokenizer.ReadToken().Type != TokenType.EndOfReader)
+            while (tokenizer.NextToken(reader).Type != TokenType.EndOfReader)
             {
             }
         }

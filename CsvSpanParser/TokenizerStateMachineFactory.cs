@@ -6,7 +6,7 @@ namespace CsvSpanParser
 {
     internal static class TokenizerStateMachineFactory
     {
-        internal static StateMachine<int, char> CreateTokenizerStateMachine(TokenizerConfig config)
+        internal static StateMachine<int, char> CreateTokenizerStateMachine(Delimiters config)
         {
             Tree<int> tree = CreateDelimiterConfigTree(config);
 
@@ -226,11 +226,11 @@ namespace CsvSpanParser
             }
         }
 
-        private static Tree<int> CreateDelimiterConfigTree(TokenizerConfig config)
+        private static Tree<int> CreateDelimiterConfigTree(Delimiters config)
         {
             var delimitersToStates = new[]
             {
-                new KeyValuePair<string, int>(config.FieldDelimiter, FlexableTokenizerTokenState.EndOfFieldDelimiter),
+                new KeyValuePair<string, int>(config.Field, FlexableTokenizerTokenState.EndOfFieldDelimiter),
                 new KeyValuePair<string, int>(config.EndOfRecord, FlexableTokenizerTokenState.EndOfEndOfRecord),
                 new KeyValuePair<string, int>(config.Quote, FlexableTokenizerTokenState.EndOfQuote),
                 new KeyValuePair<string, int>(config.Escape, FlexableTokenizerTokenState.EndOfEscape),

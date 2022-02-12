@@ -3,7 +3,7 @@
     public struct Token
     {
         public static readonly Token EndOfReader = new(TokenType.EndOfReader);
-        public static readonly Token FieldDelimiter = new(TokenType.FieldDelimiter);
+        public static readonly Token FieldDelimiter = new(TokenType.Field);
         public static readonly Token EndOfRecord = new(TokenType.EndOfRecord);
         public static readonly Token Quote = new(TokenType.Quote);
         public static readonly Token Escape = new(TokenType.Escape);

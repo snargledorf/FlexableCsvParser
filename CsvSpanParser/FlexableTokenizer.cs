@@ -7,36 +7,40 @@ namespace CsvSpanParser
 {
     public class FlexableTokenizer : Tokenizer
     {
+        private readonly Memory<char> readBuffer = new char[4096];
+        private int readBufferIndex = 0;
+        private int readBufferLength = 0;
+
         private readonly StateMachine<int, char> stateMachine;
 
-        private readonly Memory<char> readBuffer = new char[4096];
-        int readBufferIndex;
-        int readBufferLength;
-
-        public FlexableTokenizer(TextReader reader, TokenizerConfig config)
-            : base(reader, config)
+        public FlexableTokenizer(Delimiters delimiters)
+            : base(delimiters)
         {
-            stateMachine = TokenizerStateMachineFactory.CreateTokenizerStateMachine(config);
-        }
-
-        protected override void ValidateConfig(TokenizerConfig config)
-        {
-            // NoOp
+            stateMachine = TokenizerStateMachineFactory.CreateTokenizerStateMachine(delimiters);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public override Token ReadToken()
+        public override Token NextToken(TextReader reader)
         {
-            int state = FlexableTokenizerTokenState.Start;
-            int workingBufferIndex = 0;
+            var readBufferSpan = readBuffer.Span;
 
-            ReadOnlySpan<char> workingBuffer = ReadOnlySpan<char>.Empty;
+            int state = FlexableTokenizerTokenState.Start;
+
             StringBuilder? valueBuilder = null;
 
-            while (CheckReadBuffer())
+            while (true)
             {
-                workingBuffer = readBuffer.Span[readBufferIndex..readBufferLength];
-                workingBufferIndex = 0;
+                if (readBufferIndex >= readBufferLength)
+                {
+                    readBufferLength = reader.Read(readBufferSpan);
+                    readBufferIndex = 0;
+                }
+
+                if (readBufferLength == 0)
+                    break;
+
+                ReadOnlySpan<char> workingBuffer = readBufferSpan[readBufferIndex..readBufferLength];
+                int workingBufferIndex = 0;
                 do
                 {
                     char c = workingBuffer[workingBufferIndex];
@@ -87,24 +91,6 @@ namespace CsvSpanParser
                 FlexableTokenizerTokenState.Start => Token.EndOfReader,
                 _ => CreateToken(state == FlexableTokenizerTokenState.WhiteSpace ? TokenType.WhiteSpace : TokenType.Text, ref valueBuilder, ReadOnlySpan<char>.Empty)
             };
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            static Token CreateToken(in TokenType type, ref StringBuilder? valueBuilder, in ReadOnlySpan<char> buffer)
-            {
-                return new Token(type, valueBuilder?.Append(buffer).ToString() ?? new string(buffer));
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private bool CheckReadBuffer()
-        {
-            if (readBufferIndex >= readBufferLength)
-            {
-                readBufferLength = Reader.Read(readBuffer.Span);
-                readBufferIndex = 0;
-            }
-
-            return readBufferLength != 0;
         }
     }
 

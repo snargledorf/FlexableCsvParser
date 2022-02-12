@@ -1,10 +1,10 @@
 ﻿namespace CsvSpanParser
 {
-    internal class CsvParserTokenizerFactory
+    internal static class CsvParserTokenizerFactory
     {
-        internal static ITokenizer GetTokenizerForConfig(TokenizerConfig config, TextReader reader)
+        internal static ITokenizer GetTokenizerForConfig(Delimiters config)
         {
-            return new FlexableTokenizer(reader, config);
+            return new FlexableTokenizer(config);
         }
     }
 }
