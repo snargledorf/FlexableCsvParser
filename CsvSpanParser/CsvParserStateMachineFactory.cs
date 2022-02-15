@@ -1,6 +1,6 @@
 ﻿using FastState;
 
-namespace CsvSpanParser
+namespace FlexableCsvParser
 {
     internal class CsvParserStateMachineFactory
     {

@@ -1,6 +1,6 @@
 ﻿using System.Collections;
 
-namespace CsvSpanParser
+namespace FlexableCsvParser
 {
     internal sealed class TreeNode<T> : IEnumerable<TreeNode<T>>
     {

@@ -1,4 +1,4 @@
-﻿namespace CsvSpanParser
+﻿namespace FlexableCsvParser
 {
     public struct Token
     {

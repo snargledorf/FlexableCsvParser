@@ -3,7 +3,7 @@ using System.Text;
 
 using FastState;
 
-namespace CsvSpanParser
+namespace FlexableCsvParser
 {
     public class FlexableTokenizer : Tokenizer
     {

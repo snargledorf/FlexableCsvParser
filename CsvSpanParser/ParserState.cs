@@ -1,4 +1,4 @@
-﻿namespace CsvSpanParser
+﻿namespace FlexableCsvParser
 {
     internal enum ParserState
     {

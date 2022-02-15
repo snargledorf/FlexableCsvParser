@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\CsvSpanParser\CsvSpanParser.csproj" />
+    <ProjectReference Include="..\CsvSpanParser\FlexableCsvParser.csproj" />
   </ItemGroup>
 
 </Project>

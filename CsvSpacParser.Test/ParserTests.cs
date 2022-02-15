@@ -1,7 +1,7 @@
 ﻿using System.IO;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace CsvSpanParser.Test
+namespace FlexableCsvParser.Test
 {
     [TestClass]
     public class ParserTests

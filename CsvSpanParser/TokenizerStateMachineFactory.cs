@@ -2,7 +2,7 @@
 
 using FastState;
 
-namespace CsvSpanParser
+namespace FlexableCsvParser
 {
     internal static class TokenizerStateMachineFactory
     {

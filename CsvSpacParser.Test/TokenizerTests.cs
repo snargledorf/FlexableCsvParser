@@ -2,7 +2,7 @@ using System.IO;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace CsvSpanParser.Test
+namespace FlexableCsvParser.Test
 {
     [TestClass]
     public class TokenizerTests

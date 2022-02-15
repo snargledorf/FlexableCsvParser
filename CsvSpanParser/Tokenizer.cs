@@ -1,5 +1,5 @@
 ﻿using System.Text;
-namespace CsvSpanParser
+namespace FlexableCsvParser
 {
     public abstract class Tokenizer : ITokenizer
     {

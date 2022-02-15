@@ -1,7 +1,7 @@
 ﻿using System.Runtime.CompilerServices;
 using System.Text;
 
-namespace CsvSpanParser
+namespace FlexableCsvParser
 {
     public class RFC4180Tokenizer : Tokenizer
     {
