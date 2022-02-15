@@ -1,9 +1,9 @@
 ﻿namespace FlexableCsvParser
 {
-    public struct Delimiters
+    public sealed class Delimiters
     {
-        public static readonly Delimiters Default = new();
-        public static readonly Delimiters RFC4180 = Default;
+        public static readonly Delimiters RFC4180 = new Delimiters();
+        public static readonly Delimiters Default = RFC4180;
 
         public Delimiters()
             : this(",", "\r\n", "\"", "\"\"")

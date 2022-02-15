@@ -1,4 +1,6 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System;
+using System.IO;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 using FastState;
@@ -8,8 +10,8 @@ namespace FlexableCsvParser
     public class FlexableTokenizer : Tokenizer
     {
         private readonly Memory<char> readBuffer = new char[4096];
-        private int readBufferIndex = 0;
-        private int readBufferLength = 0;
+        private int readBufferIndex;
+        private int readBufferLength;
 
         private readonly StateMachine<int, char> stateMachine;
 
@@ -26,7 +28,7 @@ namespace FlexableCsvParser
 
             int state = FlexableTokenizerTokenState.Start;
 
-            StringBuilder? valueBuilder = null;
+            StringBuilder valueBuilder = null;
 
             do
             {

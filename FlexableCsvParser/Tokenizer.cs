@@ -1,4 +1,7 @@
-﻿using System.Text;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Text;
 namespace FlexableCsvParser
 {
     public abstract class Tokenizer : ITokenizer
@@ -24,7 +27,7 @@ namespace FlexableCsvParser
 
         public abstract Token NextToken(TextReader reader);
 
-        protected static Token CreateToken(in TokenType type, ref StringBuilder? valueBuilder, in ReadOnlySpan<char> buffer)
+        protected static Token CreateToken(in TokenType type, ref StringBuilder valueBuilder, in ReadOnlySpan<char> buffer)
         {
             var token = new Token(type, valueBuilder?.Append(buffer).ToString() ?? new string(buffer));
             valueBuilder = null;

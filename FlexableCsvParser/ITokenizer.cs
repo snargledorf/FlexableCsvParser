@@ -1,4 +1,7 @@
-﻿namespace FlexableCsvParser
+﻿using System.Collections.Generic;
+using System.IO;
+
+namespace FlexableCsvParser
 {
     public interface ITokenizer
     {

@@ -1,10 +1,11 @@
 ﻿using System.Collections;
+using System.Collections.Generic;
 
 namespace FlexableCsvParser
 {
     internal sealed class Tree<T> : IEnumerable<TreeNode<T>>
     {
-        private readonly Dictionary<char, TreeNode<T>> children = new();
+        private readonly Dictionary<char, TreeNode<T>> children = new Dictionary<char, TreeNode<T>>();
 
         public Tree(params KeyValuePair<string, T>[] keyValues)
         {
@@ -15,7 +16,7 @@ namespace FlexableCsvParser
         {
             foreach (var kv in keyValues)
             {
-                TreeNode<T>? currentNode = null;
+                TreeNode<T> currentNode = null;
                 foreach (char nodeKey in kv.Key)
                 {
                     if (currentNode is null)
@@ -25,9 +26,9 @@ namespace FlexableCsvParser
                     }
                     else
                     {
-                        if (currentNode.TryGetChild(nodeKey, out TreeNode<T>? nextNode))
+                        if (currentNode.TryGetChild(nodeKey, out TreeNode<T> nextNode))
                         {
-                            currentNode = nextNode!;
+                            currentNode = nextNode;
                         }
                         else
                         {
@@ -42,7 +43,7 @@ namespace FlexableCsvParser
             }
         }
 
-        private bool TryGetChild(char c, out TreeNode<T>? node)
+        private bool TryGetChild(char c, out TreeNode<T> node)
         {
             return children.TryGetValue(c, out node);
         }

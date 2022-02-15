@@ -1,4 +1,8 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 using FastState;
@@ -18,11 +22,11 @@ namespace FlexableCsvParser
         private string[] currentRecord;
         private int currentFieldIndex;
 
-        string? leadingWhiteSpaceValue;
-        private string? possibleTrailingWhiteSpaceValue;
+        string leadingWhiteSpaceValue;
+        private string possibleTrailingWhiteSpaceValue;
 
-        private readonly List<string> initialRecordBuilder = new();
-        private readonly StringBuilder fieldBuilder = new();
+        private readonly List<string> initialRecordBuilder = new List<string>();
+        private readonly StringBuilder fieldBuilder = new StringBuilder();
 
         public CsvParser(TextReader reader)
             : this(reader, CsvParserConfig.Default)
@@ -43,7 +47,7 @@ namespace FlexableCsvParser
             trimLeadingWhiteSpace = config.WhiteSpaceTrimming.HasFlag(WhiteSpaceTrimming.Leading);
             trimTrailingWhiteSpace = config.WhiteSpaceTrimming.HasFlag(WhiteSpaceTrimming.Trailing);
 
-            parserStateMachine = CsvParserStateMachineFactory.BuildParserStateMachine(config);
+            parserStateMachine = CsvParserStateMachineFactory.BuildParserStateMachine();
 
             currentRecord = new string[config.RecordLength];
         }

@@ -1,12 +1,14 @@
-﻿namespace FlexableCsvParser
+﻿using System;
+
+namespace FlexableCsvParser
 {
     public struct Token
     {
-        public static readonly Token EndOfReader = new(TokenType.EndOfReader);
-        public static readonly Token FieldDelimiter = new(TokenType.Field);
-        public static readonly Token EndOfRecord = new(TokenType.EndOfRecord);
-        public static readonly Token Quote = new(TokenType.Quote);
-        public static readonly Token Escape = new(TokenType.Escape);
+        public static readonly Token EndOfReader = new Token(TokenType.EndOfReader);
+        public static readonly Token FieldDelimiter = new Token(TokenType.Field);
+        public static readonly Token EndOfRecord = new Token(TokenType.EndOfRecord);
+        public static readonly Token Quote = new Token(TokenType.Quote);
+        public static readonly Token Escape = new Token(TokenType.Escape);
 
         public Token(TokenType type)
         {
@@ -21,7 +23,7 @@
         }
 
         public TokenType Type { get; }
-        public string? Value { get; }
+        public string Value { get; }
 
         public static bool operator ==(Token left, Token right)
         {
@@ -33,7 +35,7 @@
             return !(left == right);
         }
 
-        public override bool Equals(object? obj)
+        public override bool Equals(object obj)
         {
             return obj is Token token &&
                    Type == token.Type &&

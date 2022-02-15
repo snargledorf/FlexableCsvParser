@@ -2,9 +2,9 @@
 
 namespace FlexableCsvParser
 {
-    internal class CsvParserStateMachineFactory
+    internal static class CsvParserStateMachineFactory
     {
-        internal static StateMachine<ParserState, TokenType> BuildParserStateMachine(CsvParserConfig config)
+        internal static StateMachine<ParserState, TokenType> BuildParserStateMachine()
         {
             return new StateMachine<ParserState, TokenType>(builder =>
             {

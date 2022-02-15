@@ -1,4 +1,6 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System;
+using System.IO;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace FlexableCsvParser
@@ -21,7 +23,7 @@ namespace FlexableCsvParser
 
             int state = TokenState.Start;
 
-            StringBuilder? valueBuilder = null;
+            StringBuilder valueBuilder = null;
 
             while (true)
             {
@@ -109,15 +111,22 @@ namespace FlexableCsvParser
                 valueBuilder.Append(workingBuffer);
             }
 
-            return state switch
+            switch (state)
             {
-                TokenState.EndOfFieldDelimiter => Token.FieldDelimiter,
-                TokenState.EndOfEndOfRecord => Token.EndOfRecord,
-                TokenState.EndOfQuote or TokenState.StartOfEscape => Token.Quote,
-                TokenState.EndOfEscape => Token.Escape,
-                TokenState.Start => Token.EndOfReader,
-                _ => CreateToken(state == TokenState.WhiteSpace ? TokenType.WhiteSpace : TokenType.Text, ref valueBuilder, ReadOnlySpan<char>.Empty),
-            };
+                case TokenState.EndOfFieldDelimiter:
+                    return Token.FieldDelimiter;
+                case TokenState.EndOfEndOfRecord:
+                    return Token.EndOfRecord;
+                case TokenState.EndOfQuote:
+                case TokenState.StartOfEscape:
+                    return Token.Quote;
+                case TokenState.EndOfEscape:
+                    return Token.Escape;
+                case TokenState.Start:
+                    return Token.EndOfReader;
+                default:
+                    return CreateToken(state == TokenState.WhiteSpace ? TokenType.WhiteSpace : TokenType.Text, ref valueBuilder, ReadOnlySpan<char>.Empty);
+            }
         }
     }
 

@@ -1,4 +1,6 @@
-﻿namespace FlexableCsvParser
+﻿using System;
+
+namespace FlexableCsvParser
 {
     [Flags]
     public enum WhiteSpaceTrimming
