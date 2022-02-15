@@ -3,7 +3,7 @@
     public enum TokenType
     {
         EndOfReader,
-        FieldDelimiter,
+        Field,
         EndOfRecord,
         Quote,
         Escape,

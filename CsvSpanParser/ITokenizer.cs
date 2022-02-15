@@ -2,8 +2,8 @@
 {
     public interface ITokenizer
     {
-        Token ReadToken();
+        IEnumerable<Token> EnumerateTokens(TextReader reader);
 
-        Task<Token> ReadTokenAsync(CancellationToken cancellationToken = default);
+        Token NextToken(TextReader reader);
     }
 }

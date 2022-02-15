@@ -15,7 +15,6 @@ namespace TestHarness
             // Testing dataset https://www.kaggle.com/najzeko/steam-reviews-2021
             const string filePath = @"..\..\big.csv";
 
-            var config = new TokenizerConfig();
             using var fs = File.OpenRead(filePath);
             using var dataRateStream = new DataRateStream(fs);
             using var reader = new StreamReader(dataRateStream);
@@ -25,8 +24,8 @@ namespace TestHarness
 
             //await ReadLinesAsync(reader).ConfigureAwait(false);
             //await Task.Factory.StartNew(() => ReadLines(reader), TaskCreationOptions.LongRunning).ConfigureAwait(false);
-            //await Tokenize(config, reader).ConfigureAwait(false);
-            await Task.Factory.StartNew(() => Tokenize(config, reader), TaskCreationOptions.LongRunning).ConfigureAwait(false);
+            //await Task.Factory.StartNew(() => Tokenize(reader), TaskCreationOptions.LongRunning).ConfigureAwait(false);
+            await Task.Factory.StartNew(() => Parse(reader), TaskCreationOptions.LongRunning).ConfigureAwait(false);
 
             stopwatch.Stop();
 
@@ -45,21 +44,20 @@ namespace TestHarness
             while (reader.ReadLine() != null) ;
         }
 
-        private static async Task TokenizeAsync(TokenizerConfig config, StreamReader reader)
+        private static void Tokenize(StreamReader reader)
         {
-            var tokenizer = new Tokenizer(reader, config);
+            var tokenizer = new RFC4180Tokenizer();
 
-            Token token;
-            while ((token = await tokenizer.ReadTokenAsync().ConfigureAwait(false)).Type != TokenType.EndOfReader)
+            while (tokenizer.NextToken(reader).Type != TokenType.EndOfReader)
             {
             }
         }
 
-        private static void Tokenize(TokenizerConfig config, StreamReader reader)
+        private static void Parse(StreamReader reader)
         {
-            var tokenizer = new FlexableTokenizer(reader, config);
+            var parser = new CsvParser(reader);
 
-            while (tokenizer.ReadToken().Type != TokenType.EndOfReader)
+            while (parser.TryReadRecord(out string[] _))
             {
             }
         }

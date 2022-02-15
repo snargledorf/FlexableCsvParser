@@ -1,12 +1,12 @@
 ﻿using System.Linq.Expressions;
 
-using CsvSpanParser.StateMachine;
+using FastState;
 
 namespace CsvSpanParser
 {
     internal static class TokenizerStateMachineFactory
     {
-        internal static StateMachine<int, char> CreateTokenizerStateMachine(TokenizerConfig config)
+        internal static StateMachine<int, char> CreateTokenizerStateMachine(Delimiters config)
         {
             Tree<int> tree = CreateDelimiterConfigTree(config);
 
@@ -69,7 +69,7 @@ namespace CsvSpanParser
         //    .When((c) => char.IsWhiteSpace(c), FlexableTokenizerTokenState.WhiteSpace);
         private static void BuildStartState(IStateMachineTransitionMapBuilder<int, char> builder, Tree<int> tree)
         {
-            ITransitionMapBuilder<int, char> startBuilder = builder.From(FlexableTokenizerTokenState.Start);
+            IStateTransitionMapBuilder<int, char> startBuilder = builder.From(FlexableTokenizerTokenState.Start);
             
             int stateId = FlexableTokenizerTokenState.StartOfAdditionalStates;
             foreach (var node in tree)
@@ -111,7 +111,7 @@ namespace CsvSpanParser
             var currentState = whiteSpace ? FlexableTokenizerTokenState.WhiteSpace : FlexableTokenizerTokenState.Text;
             var nextState = whiteSpace ? FlexableTokenizerTokenState.EndOfWhiteSpace : FlexableTokenizerTokenState.EndOfText;
 
-            ITransitionMapBuilder<int, char> textBuilder = builder.From(currentState);
+            IStateTransitionMapBuilder<int, char> textBuilder = builder.From(currentState);
 
             foreach (var node in tree)
             {
@@ -136,7 +136,7 @@ namespace CsvSpanParser
             }
         }
 
-        private static void BuildTransitions(TreeNode<int> node, ITransitionMapBuilder<int, char> currentMapBuilder, ref int stateId)
+        private static void BuildTransitions(TreeNode<int> node, IStateTransitionMapBuilder<int, char> currentMapBuilder, ref int stateId)
         {
             // If this node has a value then it should be treated as a final node
             // This breaks instances where a control string may be the start of another control string
@@ -226,11 +226,11 @@ namespace CsvSpanParser
             }
         }
 
-        private static Tree<int> CreateDelimiterConfigTree(TokenizerConfig config)
+        private static Tree<int> CreateDelimiterConfigTree(Delimiters config)
         {
             var delimitersToStates = new[]
             {
-                new KeyValuePair<string, int>(config.FieldDelimiter, FlexableTokenizerTokenState.EndOfFieldDelimiter),
+                new KeyValuePair<string, int>(config.Field, FlexableTokenizerTokenState.EndOfFieldDelimiter),
                 new KeyValuePair<string, int>(config.EndOfRecord, FlexableTokenizerTokenState.EndOfEndOfRecord),
                 new KeyValuePair<string, int>(config.Quote, FlexableTokenizerTokenState.EndOfQuote),
                 new KeyValuePair<string, int>(config.Escape, FlexableTokenizerTokenState.EndOfEscape),
