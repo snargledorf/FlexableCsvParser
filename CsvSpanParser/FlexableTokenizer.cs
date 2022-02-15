@@ -1,7 +1,7 @@
 ﻿using System.Runtime.CompilerServices;
 using System.Text;
 
-using CsvSpanParser.StateMachine;
+using FastState;
 
 namespace CsvSpanParser
 {
@@ -45,8 +45,9 @@ namespace CsvSpanParser
                 {
                     char c = workingBuffer[workingBufferIndex];
 
-                    if (stateMachine.TryTransition(state, c, out state))
+                    if (stateMachine.TryTransition(state, c, out int newState))
                     {
+                        state = newState;
                         switch (state)
                         {
                             case FlexableTokenizerTokenState.EndOfText:
@@ -78,8 +79,8 @@ namespace CsvSpanParser
             }
             while (true);
 
-            if (state != FlexableTokenizerTokenState.Start && stateMachine.TryGetDefaultForState(state, out int newState))
-                state = newState;
+            if (state != FlexableTokenizerTokenState.Start && stateMachine.TryGetDefaultForState(state, out int defaultState))
+                state = defaultState;
 
             return state switch
             {

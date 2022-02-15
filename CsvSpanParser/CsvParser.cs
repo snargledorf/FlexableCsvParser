@@ -1,6 +1,7 @@
 ﻿using System.Runtime.CompilerServices;
 using System.Text;
-using CsvSpanParser.StateMachine;
+
+using FastState;
 
 namespace CsvSpanParser
 {
@@ -51,8 +52,9 @@ namespace CsvSpanParser
             while ((token = tokenizer.NextToken(reader)).Type != TokenType.EndOfReader)
             {
                 previousState = state;
-                if (parserStateMachine.TryTransition(state, token.Type, out state))
+                if (parserStateMachine.TryTransition(state, token.Type, out ParserState newState))
                 {
+                    state = newState;
                     switch (state)
                     {
                         case ParserState.UnquotedFieldText:

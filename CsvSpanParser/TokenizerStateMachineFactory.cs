@@ -1,6 +1,6 @@
 ﻿using System.Linq.Expressions;
 
-using CsvSpanParser.StateMachine;
+using FastState;
 
 namespace CsvSpanParser
 {
@@ -69,7 +69,7 @@ namespace CsvSpanParser
         //    .When((c) => char.IsWhiteSpace(c), FlexableTokenizerTokenState.WhiteSpace);
         private static void BuildStartState(IStateMachineTransitionMapBuilder<int, char> builder, Tree<int> tree)
         {
-            ITransitionMapBuilder<int, char> startBuilder = builder.From(FlexableTokenizerTokenState.Start);
+            IStateTransitionMapBuilder<int, char> startBuilder = builder.From(FlexableTokenizerTokenState.Start);
             
             int stateId = FlexableTokenizerTokenState.StartOfAdditionalStates;
             foreach (var node in tree)
@@ -111,7 +111,7 @@ namespace CsvSpanParser
             var currentState = whiteSpace ? FlexableTokenizerTokenState.WhiteSpace : FlexableTokenizerTokenState.Text;
             var nextState = whiteSpace ? FlexableTokenizerTokenState.EndOfWhiteSpace : FlexableTokenizerTokenState.EndOfText;
 
-            ITransitionMapBuilder<int, char> textBuilder = builder.From(currentState);
+            IStateTransitionMapBuilder<int, char> textBuilder = builder.From(currentState);
 
             foreach (var node in tree)
             {
@@ -136,7 +136,7 @@ namespace CsvSpanParser
             }
         }
 
-        private static void BuildTransitions(TreeNode<int> node, ITransitionMapBuilder<int, char> currentMapBuilder, ref int stateId)
+        private static void BuildTransitions(TreeNode<int> node, IStateTransitionMapBuilder<int, char> currentMapBuilder, ref int stateId)
         {
             // If this node has a value then it should be treated as a final node
             // This breaks instances where a control string may be the start of another control string

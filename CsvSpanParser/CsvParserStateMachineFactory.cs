@@ -1,4 +1,4 @@
-﻿using CsvSpanParser.StateMachine;
+﻿using FastState;
 
 namespace CsvSpanParser
 {
@@ -23,7 +23,7 @@ namespace CsvSpanParser
             BuildStartOfFieldTransitions(builder.From(ParserState.EndOfRecord));
         }
 
-        private static void BuildStartOfFieldTransitions(ITransitionMapBuilder<ParserState, TokenType> builder)
+        private static void BuildStartOfFieldTransitions(IStateTransitionMapBuilder<ParserState, TokenType> builder)
         {
             builder
                 .When(TokenType.Text, ParserState.UnquotedFieldText)
