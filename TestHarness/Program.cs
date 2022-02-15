@@ -30,8 +30,6 @@ namespace TestHarness
             stopwatch.Stop();
 
             Console.WriteLine($"Read file in {stopwatch.Elapsed}");
-            Console.Write("Press any key to quit...");
-            Console.ReadKey(true);
         }
 
         private static async Task ReadLinesAsync(StreamReader reader)

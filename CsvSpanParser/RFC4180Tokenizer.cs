@@ -113,10 +113,10 @@ namespace CsvSpanParser
             {
                 TokenState.EndOfFieldDelimiter => Token.FieldDelimiter,
                 TokenState.EndOfEndOfRecord => Token.EndOfRecord,
-                TokenState.EndOfQuote => Token.Quote,
+                TokenState.EndOfQuote or TokenState.StartOfEscape => Token.Quote,
                 TokenState.EndOfEscape => Token.Escape,
                 TokenState.Start => Token.EndOfReader,
-                _ => CreateToken(state == TokenState.WhiteSpace ? TokenType.WhiteSpace : TokenType.Text, ref valueBuilder, ReadOnlySpan<char>.Empty)
+                _ => CreateToken(state == TokenState.WhiteSpace ? TokenType.WhiteSpace : TokenType.Text, ref valueBuilder, ReadOnlySpan<char>.Empty),
             };
         }
     }

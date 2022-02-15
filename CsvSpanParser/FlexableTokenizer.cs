@@ -82,15 +82,21 @@ namespace CsvSpanParser
             if (state != FlexableTokenizerTokenState.Start && stateMachine.TryGetDefaultForState(state, out int defaultState))
                 state = defaultState;
 
-            return state switch
+            switch (state)
             {
-                FlexableTokenizerTokenState.EndOfFieldDelimiter => Token.FieldDelimiter,
-                FlexableTokenizerTokenState.EndOfEndOfRecord => Token.EndOfRecord,
-                FlexableTokenizerTokenState.EndOfQuote => Token.Quote,
-                FlexableTokenizerTokenState.EndOfEscape => Token.Escape,
-                FlexableTokenizerTokenState.Start => Token.EndOfReader,
-                _ => CreateToken(state == FlexableTokenizerTokenState.WhiteSpace ? TokenType.WhiteSpace : TokenType.Text, ref valueBuilder, ReadOnlySpan<char>.Empty)
-            };
+                case FlexableTokenizerTokenState.EndOfFieldDelimiter:
+                    return Token.FieldDelimiter;
+                case FlexableTokenizerTokenState.EndOfEndOfRecord:
+                    return Token.EndOfRecord;
+                case FlexableTokenizerTokenState.EndOfQuote:
+                    return Token.Quote;
+                case FlexableTokenizerTokenState.EndOfEscape:
+                    return Token.Escape;
+                case FlexableTokenizerTokenState.Start:
+                    return Token.EndOfReader;
+                default:
+                    return CreateToken(state == FlexableTokenizerTokenState.WhiteSpace ? TokenType.WhiteSpace : TokenType.Text, ref valueBuilder, ReadOnlySpan<char>.Empty);
+            }
         }
     }
 

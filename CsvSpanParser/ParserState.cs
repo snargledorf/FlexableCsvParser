@@ -15,7 +15,9 @@
         QuotedFieldEscape,
         QuotedFieldWithoutClosingQuote,
         UnexpectedToken,
+        QuotedFieldLeadingWhiteSpace,
         QuotedFieldTrailingWhiteSpace,
+        QuotedFieldClosingQuoteTrailingWhiteSpace,
         UnquotedFieldTrailingWhiteSpace,
         EscapeAfterLeadingEscape,
     }

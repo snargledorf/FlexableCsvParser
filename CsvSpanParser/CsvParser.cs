@@ -8,19 +8,21 @@ namespace CsvSpanParser
     public class CsvParser
     {
         private readonly TextReader reader;
-        private CsvParserConfig config;
-
-        private ITokenizer tokenizer;
+        private readonly CsvParserConfig config;
+        private readonly ITokenizer tokenizer;
+        private readonly bool trimLeadingWhiteSpace;
+        private readonly bool trimTrailingWhiteSpace;
 
         private StateMachine<ParserState, TokenType> parserStateMachine;
-
-        private readonly List<string> initialRecordBuilder = new();
-        private readonly StringBuilder fieldBuilder = new();
 
         private string[] currentRecord;
         private int currentFieldIndex;
 
         string? leadingWhiteSpaceValue;
+        private string? possibleTrailingWhiteSpaceValue;
+
+        private readonly List<string> initialRecordBuilder = new();
+        private readonly StringBuilder fieldBuilder = new();
 
         public CsvParser(TextReader reader)
             : this(reader, CsvParserConfig.Default)
@@ -36,8 +38,10 @@ namespace CsvSpanParser
         {
             this.reader = reader;
             this.config = config;
-
             this.tokenizer = tokenizer;
+
+            trimLeadingWhiteSpace = config.WhiteSpaceTrimming.HasFlag(WhiteSpaceTrimming.Leading);
+            trimTrailingWhiteSpace = config.WhiteSpaceTrimming.HasFlag(WhiteSpaceTrimming.Trailing);
 
             parserStateMachine = CsvParserStateMachineFactory.BuildParserStateMachine(config);
 
@@ -62,7 +66,9 @@ namespace CsvSpanParser
                     switch (state)
                     {
                         case ParserState.UnquotedFieldText:
+                        case ParserState.QuotedFieldText:
                             AppendLeadingWhiteSpace();
+                            AppendTrailingWhiteSpace();
                             fieldBuilder.Append(token.Value);
                             break;
 
@@ -74,26 +80,35 @@ namespace CsvSpanParser
                             record = CreateRecord();
                             return true;
 
-                        case ParserState.QuotedFieldText:
-                            fieldBuilder.Append(token.Value);
-                            break;
-
                         case ParserState.EscapeAfterLeadingEscape:
                         case ParserState.QuotedFieldEscape:
+                            AppendLeadingWhiteSpace();
+                            AppendTrailingWhiteSpace();
                             fieldBuilder.Append(config.Delimiters.Quote);
                             break;
 
+                        case ParserState.QuotedFieldLeadingWhiteSpace:
                         case ParserState.LeadingWhiteSpace:
-                            leadingWhiteSpaceValue = token.Value;
+                            // Only store the leading whitespace if there is a possiblity we might need it
+                            // IE. If trim leading isn't enabled
+                            if (!trimLeadingWhiteSpace)
+                                leadingWhiteSpaceValue = token.Value;
                             break;
 
+                        case ParserState.QuotedFieldTrailingWhiteSpace:
                         case ParserState.UnquotedFieldTrailingWhiteSpace:
-                            // Possible todo in the future: Store trailing whitespace in the event trimming is turned on but we may have more text (IE. A space)
-                            fieldBuilder.Append(token.Value);
+                            // Only store the trailing whitespace if trailing whitespace trimming is enabled
+                            // This is so if we do end up with more field text, we can append the whitespace
+                            // since that means it isn't trailing
+                            if (trimTrailingWhiteSpace)
+                                possibleTrailingWhiteSpaceValue = token.Value;
+                            else
+                                fieldBuilder.Append(token.Value);
                             break;
 
                         case ParserState.UnexpectedToken:
                             throw new InvalidDataException($"Unexpected token: State = {previousState}, Token = {token}, Buffer = {fieldBuilder}");
+
 
                         default:
                             ClearLeadingWhiteSpace();
@@ -140,7 +155,7 @@ namespace CsvSpanParser
             }
 
             previousState = state;
-            if (parserStateMachine.TryGetDefaultForState(state, out ParserState defaultState))
+            if (state != ParserState.Start && parserStateMachine.TryGetDefaultForState(state, out ParserState defaultState))
                 state = defaultState;
 
             if (state == ParserState.QuotedFieldText)
@@ -196,6 +211,7 @@ namespace CsvSpanParser
         private void AddCurrentField()
         {
             AppendLeadingWhiteSpace();
+            ClearTrailingWhiteSpace();
 
             string value = fieldBuilder.ToString();
             fieldBuilder.Clear();
@@ -224,6 +240,22 @@ namespace CsvSpanParser
         private void ClearLeadingWhiteSpace()
         {
             leadingWhiteSpaceValue = null;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void AppendTrailingWhiteSpace()
+        {
+            if (possibleTrailingWhiteSpaceValue == null)
+                return;
+
+            fieldBuilder.Append(possibleTrailingWhiteSpaceValue);
+            ClearTrailingWhiteSpace();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void ClearTrailingWhiteSpace()
+        {
+            possibleTrailingWhiteSpaceValue = null;
         }
     }
 }

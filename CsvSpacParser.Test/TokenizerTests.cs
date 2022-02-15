@@ -36,6 +36,36 @@ namespace CsvSpanParser.Test
         }
 
         [TestMethod]
+        public void SimpleRFC4180CsvQuotedFieldEndOfReader()
+        {
+            const string Csv = "123, \"456,\"\"789\"\"\" ,\"ABC\"";
+            var tokenizer = new RFC4180Tokenizer();
+
+            var expectedTokens = new[]
+            {
+                new Token(TokenType.Text, "123"),
+                Token.FieldDelimiter,
+                new Token(TokenType.WhiteSpace, " "),
+                Token.Quote,
+                new Token(TokenType.Text, "456"),
+                Token.FieldDelimiter,
+                Token.Escape,
+                new Token(TokenType.Text, "789"),
+                Token.Escape,
+                Token.Quote,
+                new Token(TokenType.WhiteSpace, " "),
+                Token.FieldDelimiter,
+                Token.Quote,
+                new Token(TokenType.Text, "ABC"),
+                Token.Quote,
+                Token.EndOfReader
+            };
+
+            Token[] tokens = tokenizer.EnumerateTokens(new StringReader(Csv)).ToArray();
+            CollectionAssert.AreEqual(expectedTokens, tokens);
+        }
+
+        [TestMethod]
         public void SimpleRFC4180CsvFlexable()
         {
             const string Csv = "123, \"456,\"\"789\"\"\" ,ABC";
@@ -56,6 +86,36 @@ namespace CsvSpanParser.Test
                 new Token(TokenType.WhiteSpace, " "),
                 Token.FieldDelimiter,
                 new Token(TokenType.Text, "ABC"),
+                Token.EndOfReader
+            };
+
+            Token[] tokens = tokenizer.EnumerateTokens(new StringReader(Csv)).ToArray();
+            CollectionAssert.AreEqual(expectedTokens, tokens);
+        }
+
+        [TestMethod]
+        public void SimpleRFC4180CsvFlexableQuotedFieldEndOfReader()
+        {
+            const string Csv = "123, \"456,\"\"789\"\"\" ,\"ABC\"";
+            var tokenizer = new FlexableTokenizer(Delimiters.RFC4180);
+
+            var expectedTokens = new[]
+            {
+                new Token(TokenType.Text, "123"),
+                Token.FieldDelimiter,
+                new Token(TokenType.WhiteSpace, " "),
+                Token.Quote,
+                new Token(TokenType.Text, "456"),
+                Token.FieldDelimiter,
+                Token.Escape,
+                new Token(TokenType.Text, "789"),
+                Token.Escape,
+                Token.Quote,
+                new Token(TokenType.WhiteSpace, " "),
+                Token.FieldDelimiter,
+                Token.Quote,
+                new Token(TokenType.Text, "ABC"),
+                Token.Quote,
                 Token.EndOfReader
             };
 

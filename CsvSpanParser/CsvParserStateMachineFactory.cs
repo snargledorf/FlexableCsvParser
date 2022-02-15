@@ -67,24 +67,36 @@ namespace CsvSpanParser
             builder.From(ParserState.QuotedFieldOpenQuote)
                 .When(TokenType.Quote, ParserState.QuotedFieldClosingQuote)
                 .When(TokenType.Escape, ParserState.QuotedFieldEscape)
+                .When(TokenType.WhiteSpace, ParserState.QuotedFieldLeadingWhiteSpace)
                 .Default(ParserState.QuotedFieldText);
 
             builder.From(ParserState.QuotedFieldText)
                 .When(TokenType.Quote, ParserState.QuotedFieldClosingQuote)
-                .When(TokenType.Escape, ParserState.QuotedFieldEscape);
+                .When(TokenType.Escape, ParserState.QuotedFieldEscape)
+                .When(TokenType.WhiteSpace, ParserState.QuotedFieldTrailingWhiteSpace);
 
             builder.From(ParserState.QuotedFieldEscape)
                 .When(TokenType.Quote, ParserState.QuotedFieldClosingQuote)
                 .When(TokenType.Escape, ParserState.QuotedFieldEscape)
                 .Default(ParserState.QuotedFieldText);
 
+            builder.From(ParserState.QuotedFieldLeadingWhiteSpace)
+                .When(TokenType.Quote, ParserState.QuotedFieldClosingQuote)
+                .When(TokenType.Escape, ParserState.QuotedFieldEscape)
+                .Default(ParserState.QuotedFieldText);
+
+            builder.From(ParserState.QuotedFieldTrailingWhiteSpace)
+                .When(TokenType.Quote, ParserState.QuotedFieldClosingQuote)
+                .When(TokenType.Escape, ParserState.QuotedFieldEscape)
+                .Default(ParserState.QuotedFieldText);
+
             builder.From(ParserState.QuotedFieldClosingQuote)
-                .When(TokenType.WhiteSpace, ParserState.QuotedFieldTrailingWhiteSpace)
+                .When(TokenType.WhiteSpace, ParserState.QuotedFieldClosingQuoteTrailingWhiteSpace)
                 .When(TokenType.EndOfRecord, ParserState.EndOfRecord)
                 .GotoWhen(ParserState.UnexpectedToken, TokenType.Text, TokenType.Escape, TokenType.Quote)
                 .Default(ParserState.EndOfField);
 
-            builder.From(ParserState.QuotedFieldTrailingWhiteSpace)
+            builder.From(ParserState.QuotedFieldClosingQuoteTrailingWhiteSpace)
                 .When(TokenType.EndOfRecord, ParserState.EndOfRecord)
                 .GotoWhen(ParserState.UnexpectedToken, TokenType.Text, TokenType.WhiteSpace, TokenType.Escape, TokenType.Quote)
                 .Default(ParserState.EndOfField);
@@ -92,7 +104,7 @@ namespace CsvSpanParser
             builder.From(ParserState.LeadingEscape)
                 .When(TokenType.Quote, ParserState.QuotedFieldEscape) // Handles Foo,"""Bar""",Biz
                 .When(TokenType.Escape, ParserState.EscapeAfterLeadingEscape) // Handles Foo,""""" Empty quotes",Biz
-                .When(TokenType.WhiteSpace, ParserState.QuotedFieldTrailingWhiteSpace) // Handles Foo,"" ,Biz
+                .When(TokenType.WhiteSpace, ParserState.QuotedFieldClosingQuoteTrailingWhiteSpace) // Handles Foo,"" ,Biz
                 .When(TokenType.Text, ParserState.UnexpectedToken)
                 .Default(ParserState.EndOfField); // Handles Foo,"",Biz | Foo,Bar,""
 
@@ -100,7 +112,7 @@ namespace CsvSpanParser
                 .When(TokenType.Escape, ParserState.EscapeAfterLeadingEscape) // Handles Foo,"""""",Biz
                 .When(TokenType.Field, ParserState.EndOfField) // Handles Foo,"""""",Biz
                 .When(TokenType.Quote, ParserState.QuotedFieldEscape)
-                .When(TokenType.WhiteSpace, ParserState.QuotedFieldTrailingWhiteSpace) //  Foo,"""" ,Biz
+                .When(TokenType.WhiteSpace, ParserState.QuotedFieldClosingQuoteTrailingWhiteSpace) //  Foo,"""" ,Biz
                 .When(TokenType.Text, ParserState.UnexpectedToken) // Foo,""""Bar,Biz
                 .Default(ParserState.EndOfField); // Foo,"""" | Foo,""""""
         }

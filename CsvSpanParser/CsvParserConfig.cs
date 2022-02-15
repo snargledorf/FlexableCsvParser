@@ -16,27 +16,33 @@
             string quote = "\"",
             string escape = "\"\"",
             int recordLength = 0,
-            IncompleteRecordHandling incompleteRecordHandling = IncompleteRecordHandling.ThrowException)
+            IncompleteRecordHandling incompleteRecordHandling = IncompleteRecordHandling.ThrowException,
+            WhiteSpaceTrimming whiteSpaceTrimming = WhiteSpaceTrimming.None)
             : this(
                 new Delimiters(field, endOfRecord, quote, escape),
                 recordLength,
-                incompleteRecordHandling)
+                incompleteRecordHandling,
+                whiteSpaceTrimming)
         {
         }
 
         public CsvParserConfig(
             Delimiters delimiters,
             int recordLength = 0,
-            IncompleteRecordHandling incompleteRecordHandling = IncompleteRecordHandling.ThrowException)
+            IncompleteRecordHandling incompleteRecordHandling = IncompleteRecordHandling.ThrowException,
+            WhiteSpaceTrimming whiteSpaceTrimming = WhiteSpaceTrimming.None)
         {
             Delimiters = delimiters;
             RecordLength = recordLength;
             IncompleteRecordHandling = incompleteRecordHandling;
+            WhiteSpaceTrimming = whiteSpaceTrimming;
         }
 
         public Delimiters Delimiters { get; }
 
         public int RecordLength { get; set; }
         public IncompleteRecordHandling IncompleteRecordHandling { get; set; }
+
+        public WhiteSpaceTrimming WhiteSpaceTrimming { get; set; }
     }
 }

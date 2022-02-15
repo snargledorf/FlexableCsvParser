@@ -38,18 +38,6 @@ namespace CsvSpanParser
                 BuildStartState(builder, tree);
                 BuildWhiteSpaceState(builder, tree);
                 BuildTextState(builder, tree);
-
-                builder.From(FlexableTokenizerTokenState.FieldDelimiter)
-                    .Default(FlexableTokenizerTokenState.EndOfFieldDelimiter);
-
-                builder.From(FlexableTokenizerTokenState.EndOfRecord)
-                    .Default(FlexableTokenizerTokenState.EndOfEndOfRecord);
-
-                builder.From(FlexableTokenizerTokenState.Quote)
-                    .Default(FlexableTokenizerTokenState.EndOfQuote);
-
-                builder.From(FlexableTokenizerTokenState.Escape)
-                    .Default(FlexableTokenizerTokenState.EndOfEscape);
             });
         }
 

@@ -206,5 +206,95 @@ namespace CsvSpanParser.Test
             CollectionAssert.AreEqual(expectedRecord, record);
             Assert.IsFalse(parser.TryReadRecord(out _));
         }
+
+        [TestMethod]
+        public void WhiteSpaceTrimmingDefault()
+        {
+            const string Csv = "123 , Foo ,\" Bar \"";
+            var parser = new CsvParser(new StringReader(Csv));
+
+            var expectedRecord = new[]
+            {
+                "123 ",
+                " Foo ",
+                " Bar "
+            };
+
+            Assert.IsTrue(parser.TryReadRecord(out string[] record));
+            CollectionAssert.AreEqual(expectedRecord, record);
+            Assert.IsFalse(parser.TryReadRecord(out _));
+        }
+
+        [TestMethod]
+        public void WhiteSpaceTrimmingNone()
+        {
+            const string Csv = "123 , Foo ,\" Bar \"";
+            var parser = new CsvParser(new StringReader(Csv), new(whiteSpaceTrimming: WhiteSpaceTrimming.None));
+
+            var expectedRecord = new[]
+            {
+                "123 ",
+                " Foo ",
+                " Bar "
+            };
+
+            Assert.IsTrue(parser.TryReadRecord(out string[] record));
+            CollectionAssert.AreEqual(expectedRecord, record);
+            Assert.IsFalse(parser.TryReadRecord(out _));
+        }
+
+        [TestMethod]
+        public void WhiteSpaceTrimmingLeading()
+        {
+            const string Csv = "123 , Foo ,\" Bar \"";
+            var parser = new CsvParser(new StringReader(Csv), new(whiteSpaceTrimming: WhiteSpaceTrimming.Leading));
+
+            var expectedRecord = new[]
+            {
+                "123 ",
+                "Foo ",
+                "Bar "
+            };
+
+            Assert.IsTrue(parser.TryReadRecord(out string[] record));
+            CollectionAssert.AreEqual(expectedRecord, record);
+            Assert.IsFalse(parser.TryReadRecord(out _));
+        }
+
+        [TestMethod]
+        public void WhiteSpaceTrimmingTrailing()
+        {
+            const string Csv = "123 , Foo ,\" Bar \"";
+            var parser = new CsvParser(new StringReader(Csv), new(whiteSpaceTrimming: WhiteSpaceTrimming.Trailing));
+
+            var expectedRecord = new[]
+            {
+                "123",
+                " Foo",
+                " Bar"
+            };
+
+            Assert.IsTrue(parser.TryReadRecord(out string[] record));
+            CollectionAssert.AreEqual(expectedRecord, record);
+            Assert.IsFalse(parser.TryReadRecord(out _));
+        }
+
+        [TestMethod]
+        public void WhiteSpaceTrimmingBoth()
+        {
+            const string Csv = "123 , Foo ,\" Bar \"";
+            var parser = new CsvParser(new StringReader(Csv), new(whiteSpaceTrimming: WhiteSpaceTrimming.Both));
+
+            var expectedRecord = new[]
+            {
+                "123",
+                "Foo",
+                "Bar"
+            };
+
+            Assert.IsTrue(parser.TryReadRecord(out string[] record));
+            CollectionAssert.AreEqual(expectedRecord, record);
+            Assert.IsFalse(parser.TryReadRecord(out _));
+        }
     }
 }
