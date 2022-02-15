@@ -18,7 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\CsvSpanParser\FlexableCsvParser.csproj" />
+    <ProjectReference Include="..\FlexableCsvParser\FlexableCsvParser.csproj" />
   </ItemGroup>
 
 </Project>
