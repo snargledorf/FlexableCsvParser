@@ -12,7 +12,7 @@ namespace CsvSpanParser.Test
             const string Csv = "123, \"456,\"\"789\"\"\" ,ABC";
             var parser = new CsvParser(new StringReader(Csv));
 
-            var expectedRecod = new[]
+            var expectedRecord = new[]
             {
                 "123",
                 "456,\"789\"",
@@ -20,7 +20,7 @@ namespace CsvSpanParser.Test
             };
 
             Assert.IsTrue(parser.TryReadRecord(out string[] record));
-            CollectionAssert.AreEqual(expectedRecod, record);
+            CollectionAssert.AreEqual(expectedRecord, record);
             Assert.IsFalse(parser.TryReadRecord(out _));
         }
 
@@ -30,7 +30,7 @@ namespace CsvSpanParser.Test
             const string Csv = "123<Foo <FooB456<Foo789<FooB <FooABC<FooBar";
             var parser = new CsvParser(new StringReader(Csv), new("<Foo", "<FooBar", "<FooB"));
 
-            var expectedRecod = new[]
+            var expectedRecord = new[]
             {
                 "123",
                 "456<Foo789",
@@ -38,7 +38,7 @@ namespace CsvSpanParser.Test
             };
 
             Assert.IsTrue(parser.TryReadRecord(out string[] record));
-            CollectionAssert.AreEqual(expectedRecod, record);
+            CollectionAssert.AreEqual(expectedRecord, record);
             Assert.IsFalse(parser.TryReadRecord(out _));
         }
 
@@ -48,7 +48,7 @@ namespace CsvSpanParser.Test
             const string Csv = "123, \"\" ,ABC";
             var parser = new CsvParser(new StringReader(Csv));
 
-            var expectedRecod = new[]
+            var expectedRecord = new[]
             {
                 "123",
                 "",
@@ -56,7 +56,7 @@ namespace CsvSpanParser.Test
             };
 
             Assert.IsTrue(parser.TryReadRecord(out string[] record));
-            CollectionAssert.AreEqual(expectedRecod, record);
+            CollectionAssert.AreEqual(expectedRecord, record);
             Assert.IsFalse(parser.TryReadRecord(out _));
         }
 
@@ -66,7 +66,7 @@ namespace CsvSpanParser.Test
             const string Csv = "123, \"\",ABC";
             var parser = new CsvParser(new StringReader(Csv));
 
-            var expectedRecod = new[]
+            var expectedRecord = new[]
             {
                 "123",
                 "",
@@ -74,7 +74,7 @@ namespace CsvSpanParser.Test
             };
 
             Assert.IsTrue(parser.TryReadRecord(out string[] record));
-            CollectionAssert.AreEqual(expectedRecod, record);
+            CollectionAssert.AreEqual(expectedRecord, record);
             Assert.IsFalse(parser.TryReadRecord(out _));
         }
 
@@ -84,7 +84,7 @@ namespace CsvSpanParser.Test
             const string Csv = "123, \"\"\"\"\"\" ,ABC";
             var parser = new CsvParser(new StringReader(Csv));
 
-            var expectedRecod = new[]
+            var expectedRecord = new[]
             {
                 "123",
                 "\"\"",
@@ -92,7 +92,7 @@ namespace CsvSpanParser.Test
             };
 
             Assert.IsTrue(parser.TryReadRecord(out string[] record));
-            CollectionAssert.AreEqual(expectedRecod, record);
+            CollectionAssert.AreEqual(expectedRecord, record);
             Assert.IsFalse(parser.TryReadRecord(out _));
         }
 
@@ -102,7 +102,7 @@ namespace CsvSpanParser.Test
             const string Csv = "123, \"\"\"Bar\"\"\" ,ABC";
             var parser = new CsvParser(new StringReader(Csv));
 
-            var expectedRecod = new[]
+            var expectedRecord = new[]
             {
                 "123",
                 "\"Bar\"",
@@ -110,7 +110,7 @@ namespace CsvSpanParser.Test
             };
 
             Assert.IsTrue(parser.TryReadRecord(out string[] record));
-            CollectionAssert.AreEqual(expectedRecod, record);
+            CollectionAssert.AreEqual(expectedRecord, record);
             Assert.IsFalse(parser.TryReadRecord(out _));
         }
 
@@ -121,6 +121,90 @@ namespace CsvSpanParser.Test
             const string Csv = "123, \"\"Bar";
             var parser = new CsvParser(new StringReader(Csv));
             parser.TryReadRecord(out string[] _);
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(InvalidDataException))]
+        public void IncompleteRecordDefault()
+        {
+            const string Csv = "123,Foo";
+            var parser = new CsvParser(new StringReader(Csv), new(recordLength: 3));
+            parser.TryReadRecord(out string[] _);
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(InvalidDataException))]
+        public void IncompleteRecordWithoutSpecifyingRecordLength()
+        {
+            const string Csv = "123,Foo,Bar\r\n456,Hello";
+            var parser = new CsvParser(new StringReader(Csv));
+            
+            Assert.IsTrue(parser.TryReadRecord(out string[] _));
+
+            // This one throws the exception
+            parser.TryReadRecord(out string[] _);
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(InvalidDataException))]
+        public void IncompleteRecordThrowException()
+        {
+            const string Csv = "123,Foo";
+            var parser = new CsvParser(new StringReader(Csv), new(recordLength: 3, incompleteRecordHandling: IncompleteRecordHandling.ThrowException));
+            parser.TryReadRecord(out string[] _);
+        }
+
+        [TestMethod]
+        public void IncompleteRecordFillEmpty()
+        {
+            const string Csv = "123,Foo";
+            var parser = new CsvParser(new StringReader(Csv), new(recordLength: 3, incompleteRecordHandling: IncompleteRecordHandling.FillInWithEmpty));
+
+            var expectedRecord = new[]
+            {
+                "123",
+                "Foo",
+                ""
+            };
+
+            Assert.IsTrue(parser.TryReadRecord(out string[] record));
+            CollectionAssert.AreEqual(expectedRecord, record);
+            Assert.IsFalse(parser.TryReadRecord(out _));
+        }
+
+        [TestMethod]
+        public void IncompleteRecordFillNull()
+        {
+            const string Csv = "123,Foo";
+            var parser = new CsvParser(new StringReader(Csv), new(recordLength: 3, incompleteRecordHandling: IncompleteRecordHandling.FillInWithNull));
+
+            var expectedRecord = new[]
+            {
+                "123",
+                "Foo",
+                null
+            };
+
+            Assert.IsTrue(parser.TryReadRecord(out string[] record));
+            CollectionAssert.AreEqual(expectedRecord, record);
+            Assert.IsFalse(parser.TryReadRecord(out _));
+        }
+
+        [TestMethod]
+        public void IncompleteRecordTruncate()
+        {
+            const string Csv = "123,Foo";
+            var parser = new CsvParser(new StringReader(Csv), new(recordLength: 3, incompleteRecordHandling: IncompleteRecordHandling.TruncateRecord));
+
+            var expectedRecord = new[]
+            {
+                "123",
+                "Foo"
+            };
+
+            Assert.IsTrue(parser.TryReadRecord(out string[] record));
+            CollectionAssert.AreEqual(expectedRecord, record);
+            Assert.IsFalse(parser.TryReadRecord(out _));
         }
     }
 }

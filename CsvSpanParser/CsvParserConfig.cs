@@ -10,16 +10,33 @@
         {
         }
 
-        public CsvParserConfig(string field = ",", string endOfRecord = "\r\n", string quote = "\"", string escape = "\"\"")
-            : this(new Delimiters(field, endOfRecord, quote, escape))
+        public CsvParserConfig(
+            string field = ",",
+            string endOfRecord = "\r\n",
+            string quote = "\"",
+            string escape = "\"\"",
+            int recordLength = 0,
+            IncompleteRecordHandling incompleteRecordHandling = IncompleteRecordHandling.ThrowException)
+            : this(
+                new Delimiters(field, endOfRecord, quote, escape),
+                recordLength,
+                incompleteRecordHandling)
         {
         }
 
-        public CsvParserConfig(Delimiters delimiters)
+        public CsvParserConfig(
+            Delimiters delimiters,
+            int recordLength = 0,
+            IncompleteRecordHandling incompleteRecordHandling = IncompleteRecordHandling.ThrowException)
         {
             Delimiters = delimiters;
+            RecordLength = recordLength;
+            IncompleteRecordHandling = incompleteRecordHandling;
         }
 
         public Delimiters Delimiters { get; }
+
+        public int RecordLength { get; set; }
+        public IncompleteRecordHandling IncompleteRecordHandling { get; set; }
     }
 }

@@ -14,10 +14,13 @@ namespace CsvSpanParser
 
         private StateMachine<ParserState, TokenType> parserStateMachine;
 
-        private readonly List<string> recordBuilder = new();
+        private readonly List<string> initialRecordBuilder = new();
         private readonly StringBuilder fieldBuilder = new();
 
-        string? leadingWhiteSpaceValue = null;
+        private string[] currentRecord;
+        private int currentFieldIndex;
+
+        string? leadingWhiteSpaceValue;
 
         public CsvParser(TextReader reader)
             : this(reader, CsvParserConfig.Default)
@@ -37,14 +40,15 @@ namespace CsvSpanParser
             this.tokenizer = tokenizer;
 
             parserStateMachine = CsvParserStateMachineFactory.BuildParserStateMachine(config);
+
+            currentRecord = new string[config.RecordLength];
         }
 
         public bool TryReadRecord(out string[] record)
         {
             var state = ParserState.Start;
-            
-            recordBuilder.Clear();
-            fieldBuilder.Clear();
+
+            currentFieldIndex = 0;
 
             ParserState previousState;
 
@@ -63,15 +67,12 @@ namespace CsvSpanParser
                             break;
 
                         case ParserState.EndOfField:
-                            AppendLeadingWhiteSpace();
                             AddCurrentField();
                             break;
 
                         case ParserState.EndOfRecord:
-                            AppendLeadingWhiteSpace();
-                            AddCurrentField();
-                            record = recordBuilder.ToArray();
-                            return record.Length > 0;
+                            record = CreateRecord();
+                            return true;
 
                         case ParserState.QuotedFieldText:
                             fieldBuilder.Append(token.Value);
@@ -145,26 +146,78 @@ namespace CsvSpanParser
             if (state == ParserState.QuotedFieldText)
                 throw new Exception($"Final quoted field did not have a closing quote: State = {previousState}, Buffer = {fieldBuilder}");
 
+            record = CreateRecord();
+            return true;
+        }
+
+        private string[] CreateRecord()
+        {
             AddCurrentField();
-            record = recordBuilder.ToArray();
-            return record.Length > 0;
+
+            if (currentRecord.Length == 0)
+            {
+                currentRecord = initialRecordBuilder.ToArray();
+                currentFieldIndex = currentRecord.Length;
+            }
+
+            int recordLength = currentRecord.Length;
+
+            if (currentFieldIndex != currentRecord.Length)
+            {
+                switch (config.IncompleteRecordHandling)
+                {
+                    case IncompleteRecordHandling.ThrowException:
+                        throw new InvalidDataException($"Record is incomplete: {string.Join(',', currentRecord.Take(currentFieldIndex))}");
+
+                    case IncompleteRecordHandling.FillInWithEmpty:
+                        Array.Fill(currentRecord, string.Empty, currentFieldIndex, currentRecord.Length - currentFieldIndex);
+                        break;
+
+                    case IncompleteRecordHandling.FillInWithNull:
+                        Array.Fill(currentRecord, null, currentFieldIndex, currentRecord.Length - currentFieldIndex);
+                        break;
+
+                    case IncompleteRecordHandling.TruncateRecord:
+                        recordLength = currentFieldIndex;
+                        break;
+
+                    default:
+                        throw new InvalidOperationException($"Not a valid {nameof(IncompleteRecordHandling)}");
+                }
+            }
+
+            var result = new string[recordLength];
+            Array.Copy(currentRecord, result, recordLength);
+
+            return result;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void AddCurrentField()
         {
-            recordBuilder.Add(fieldBuilder.ToString());
+            AppendLeadingWhiteSpace();
+
+            string value = fieldBuilder.ToString();
             fieldBuilder.Clear();
+
+            if (currentRecord.Length == 0)
+            {
+                initialRecordBuilder.Add(value);
+            }
+            else
+            {
+                currentRecord[currentFieldIndex++] = value;
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void AppendLeadingWhiteSpace()
         {
-            if (leadingWhiteSpaceValue != null)
-            {
-                fieldBuilder.Append(leadingWhiteSpaceValue);
-                ClearLeadingWhiteSpace();
-            }
+            if (leadingWhiteSpaceValue == null)
+                return;
+
+            fieldBuilder.Append(leadingWhiteSpaceValue);
+            ClearLeadingWhiteSpace();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
