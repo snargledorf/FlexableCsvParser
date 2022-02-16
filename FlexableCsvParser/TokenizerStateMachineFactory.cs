@@ -218,15 +218,18 @@ namespace FlexableCsvParser
 
         private static Tree<int> CreateDelimiterConfigTree(Delimiters config)
         {
-            var delimitersToStates = new[]
+            var delimitersToStates = new List<KeyValuePair<string, int>>
             {
                 new KeyValuePair<string, int>(config.Field, FlexableTokenizerTokenState.EndOfFieldDelimiter),
                 new KeyValuePair<string, int>(config.EndOfRecord, FlexableTokenizerTokenState.EndOfEndOfRecord),
-                new KeyValuePair<string, int>(config.Quote, FlexableTokenizerTokenState.EndOfQuote),
-                new KeyValuePair<string, int>(config.Escape, FlexableTokenizerTokenState.EndOfEscape),
             };
 
-            return new Tree<int>(delimitersToStates);
+            if (!string.IsNullOrEmpty(config.Quote))
+                delimitersToStates.Add(new KeyValuePair<string, int>(config.Quote, FlexableTokenizerTokenState.EndOfQuote));
+            if (!string.IsNullOrEmpty(config.Escape))
+                delimitersToStates.Add(new KeyValuePair<string, int>(config.Escape, FlexableTokenizerTokenState.EndOfEscape));
+
+            return new Tree<int>(delimitersToStates.ToArray());
         }
     }
 }

@@ -1,4 +1,6 @@
-﻿namespace FlexableCsvParser
+﻿using System;
+
+namespace FlexableCsvParser
 {
     public sealed class Delimiters
     {
@@ -21,6 +23,15 @@
                 && EndOfRecord == "\r\n"
                 && Quote == "\""
                 && Escape == "\"\"";
+
+            if (string.IsNullOrEmpty(fieldDelimiter))
+                throw new ArgumentException("Field delimiter is required");
+
+            if (string.IsNullOrEmpty(endOfRecord))
+                throw new ArgumentException("End of record is required");
+
+            if (string.IsNullOrEmpty(quote) && !string.IsNullOrEmpty(escape))
+                throw new ArgumentException("Escape must be blank if quote is blank");
         }
 
         public string Field { get; }
