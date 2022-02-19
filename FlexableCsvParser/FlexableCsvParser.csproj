@@ -11,6 +11,8 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Copyright>Copyright 2022 Ryan Esteves</Copyright>
     <Description>CSV parser that supports any type of delimiter</Description>
+    <Version>1.1.0</Version>
+    <Company>snargledorf</Company>
   </PropertyGroup>
 
   <ItemGroup>
