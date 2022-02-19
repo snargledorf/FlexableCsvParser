@@ -4,25 +4,23 @@ namespace FlexableCsvParser
 {
     public struct Token
     {
-        public static readonly Token EndOfReader = new Token(TokenType.EndOfReader);
-        public static readonly Token FieldDelimiter = new Token(TokenType.Field);
-        public static readonly Token EndOfRecord = new Token(TokenType.EndOfRecord);
-        public static readonly Token Quote = new Token(TokenType.Quote);
-        public static readonly Token Escape = new Token(TokenType.Escape);
-
-        public Token(TokenType type)
+        public Token(TokenType type, int columnIndex, int lineIndex)
         {
             Type = type;
+            ColumnIndex = columnIndex;
+            LineIndex = lineIndex;
             Value = null;
         }
 
-        public Token(TokenType type, string value)
+        public Token(TokenType type, int columnIndex, int lineIndex, string value)
+            : this(type, columnIndex, lineIndex)
         {
-            Type = type;
             Value = value;
         }
 
         public TokenType Type { get; }
+        public int ColumnIndex { get; }
+        public int LineIndex { get; }
         public string Value { get; }
 
         public static bool operator ==(Token left, Token right)
@@ -39,6 +37,8 @@ namespace FlexableCsvParser
         {
             return obj is Token token &&
                    Type == token.Type &&
+                   ColumnIndex == token.ColumnIndex &&
+                   LineIndex == token.LineIndex &&
                    Value == token.Value;
         }
 
@@ -49,9 +49,10 @@ namespace FlexableCsvParser
 
         public override string ToString()
         {
+            string typeWithLocation = $"{Type}; Column: {ColumnIndex + 1}, Line: {LineIndex + 1}";
             return string.IsNullOrEmpty(Value)
-                ? Type.ToString()
-                : string.Join(" : ", Type, Value);
+                ? typeWithLocation
+                : string.Join("; ", typeWithLocation, Value);
         }
     }
 }

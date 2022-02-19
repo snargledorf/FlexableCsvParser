@@ -29,7 +29,7 @@ namespace FlexableCsvParser
                 .When(TokenType.Text, ParserState.UnquotedFieldText)
                 .When(TokenType.Quote, ParserState.QuotedFieldOpenQuote)
                 .When(TokenType.WhiteSpace, ParserState.LeadingWhiteSpace)
-                .When(TokenType.Field, ParserState.EndOfField)
+                .When(TokenType.FieldDelimiter, ParserState.EndOfField)
                 .When(TokenType.EndOfRecord, ParserState.EndOfRecord)
                 .When(TokenType.EndOfReader, ParserState.EndOfReader)
                 .When(TokenType.Escape, ParserState.LeadingEscape);
@@ -38,13 +38,13 @@ namespace FlexableCsvParser
         private static void BuildUnquotedFieldTransitions(IStateMachineTransitionMapBuilder<ParserState, TokenType> builder)
         {
             builder.From(ParserState.UnquotedFieldText)
-                .When(TokenType.Field, ParserState.EndOfField)
+                .When(TokenType.FieldDelimiter, ParserState.EndOfField)
                 .When(TokenType.WhiteSpace, ParserState.UnquotedFieldTrailingWhiteSpace)
                 .When(TokenType.EndOfRecord, ParserState.EndOfRecord);
 
             builder.From(ParserState.UnquotedFieldTrailingWhiteSpace)
                 .When(TokenType.Text, ParserState.UnquotedFieldText)
-                .When(TokenType.Field, ParserState.EndOfField)
+                .When(TokenType.FieldDelimiter, ParserState.EndOfField)
                 .When(TokenType.EndOfRecord, ParserState.EndOfRecord)
                 .GotoWhen(ParserState.UnexpectedToken, TokenType.WhiteSpace, TokenType.Escape, TokenType.Quote)
                 .Default(ParserState.EndOfField);
@@ -55,7 +55,7 @@ namespace FlexableCsvParser
             builder.From(ParserState.LeadingWhiteSpace)
                 .When(TokenType.Text, ParserState.UnquotedFieldText)
                 .When(TokenType.Quote, ParserState.QuotedFieldOpenQuote)
-                .When(TokenType.Field, ParserState.EndOfField)
+                .When(TokenType.FieldDelimiter, ParserState.EndOfField)
                 .When(TokenType.EndOfRecord, ParserState.EndOfRecord)
                 .When(TokenType.Escape, ParserState.LeadingEscape)
                 .When(TokenType.WhiteSpace, ParserState.UnexpectedToken)
@@ -110,7 +110,7 @@ namespace FlexableCsvParser
 
             builder.From(ParserState.EscapeAfterLeadingEscape) // Handles Foo,"""""",Biz
                 .When(TokenType.Escape, ParserState.EscapeAfterLeadingEscape) // Handles Foo,"""""",Biz
-                .When(TokenType.Field, ParserState.EndOfField) // Handles Foo,"""""",Biz
+                .When(TokenType.FieldDelimiter, ParserState.EndOfField) // Handles Foo,"""""",Biz
                 .When(TokenType.Quote, ParserState.QuotedFieldEscape)
                 .When(TokenType.WhiteSpace, ParserState.QuotedFieldClosingQuoteTrailingWhiteSpace) //  Foo,"""" ,Biz
                 .When(TokenType.Text, ParserState.UnexpectedToken) // Foo,""""Bar,Biz

@@ -13,6 +13,8 @@ namespace FlexableCsvParser
         private int readBufferIndex;
         private int readBufferLength;
 
+        private int columnIndex, lineIndex;
+
         private readonly StateMachine<int, char> stateMachine;
 
         public FlexableTokenizer(Delimiters delimiters)
@@ -29,6 +31,8 @@ namespace FlexableCsvParser
             int state = FlexableTokenizerTokenState.Start;
 
             StringBuilder valueBuilder = null;
+
+            int startOfTokenColumnIndex = columnIndex;
 
             do
             {
@@ -53,25 +57,27 @@ namespace FlexableCsvParser
                         switch (state)
                         {
                             case FlexableTokenizerTokenState.EndOfText:
-                                return CreateToken(TokenType.Text, ref valueBuilder, workingBuffer[..workingBufferIndex]);
+                                return CreateToken(TokenType.Text, startOfTokenColumnIndex, lineIndex, ref valueBuilder, workingBuffer[..workingBufferIndex]);
 
                             case FlexableTokenizerTokenState.EndOfWhiteSpace:
-                                return CreateToken(TokenType.WhiteSpace, ref valueBuilder, workingBuffer[..workingBufferIndex]);
+                                return CreateToken(TokenType.WhiteSpace, startOfTokenColumnIndex, lineIndex, ref valueBuilder, workingBuffer[..workingBufferIndex]);
 
                             case FlexableTokenizerTokenState.EndOfFieldDelimiter:
-                                return Token.FieldDelimiter;
+                                return new Token(TokenType.FieldDelimiter, startOfTokenColumnIndex, lineIndex);
 
                             case FlexableTokenizerTokenState.EndOfEndOfRecord:
-                                return Token.EndOfRecord;
+                                columnIndex = 0;
+                                return new Token(TokenType.EndOfRecord, startOfTokenColumnIndex, lineIndex++);
 
                             case FlexableTokenizerTokenState.EndOfQuote:
-                                return Token.Quote;
+                                return new Token(TokenType.Quote, startOfTokenColumnIndex, lineIndex);
 
                             case FlexableTokenizerTokenState.EndOfEscape:
-                                return Token.Escape;
+                                return new Token(TokenType.Escape, startOfTokenColumnIndex, lineIndex);
                         }
                     }
 
+                    columnIndex++;
                     readBufferIndex++;
                     workingBufferIndex++;
                 } while (workingBufferIndex < workingBuffer.Length);
@@ -87,17 +93,23 @@ namespace FlexableCsvParser
             switch (state)
             {
                 case FlexableTokenizerTokenState.EndOfFieldDelimiter:
-                    return Token.FieldDelimiter;
+                    return new Token(TokenType.FieldDelimiter, startOfTokenColumnIndex, lineIndex);
                 case FlexableTokenizerTokenState.EndOfEndOfRecord:
-                    return Token.EndOfRecord;
+                    columnIndex = 0;
+                    return new Token(TokenType.EndOfRecord, startOfTokenColumnIndex, lineIndex++);
                 case FlexableTokenizerTokenState.EndOfQuote:
-                    return Token.Quote;
+                    return new Token(TokenType.Quote, startOfTokenColumnIndex, lineIndex);
                 case FlexableTokenizerTokenState.EndOfEscape:
-                    return Token.Escape;
+                    return new Token(TokenType.Escape, startOfTokenColumnIndex, lineIndex);
                 case FlexableTokenizerTokenState.Start:
-                    return Token.EndOfReader;
+                    return new Token(TokenType.EndOfReader, startOfTokenColumnIndex, lineIndex);
                 default:
-                    return CreateToken(state == FlexableTokenizerTokenState.WhiteSpace ? TokenType.WhiteSpace : TokenType.Text, ref valueBuilder, ReadOnlySpan<char>.Empty);
+                    return CreateToken(
+                        state == FlexableTokenizerTokenState.WhiteSpace ? TokenType.WhiteSpace : TokenType.Text,
+                        startOfTokenColumnIndex,
+                        lineIndex,
+                        ref valueBuilder,
+                        ReadOnlySpan<char>.Empty);
             }
         }
     }

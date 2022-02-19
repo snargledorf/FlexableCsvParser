@@ -27,9 +27,9 @@ namespace FlexableCsvParser
 
         public abstract Token NextToken(TextReader reader);
 
-        protected static Token CreateToken(in TokenType type, ref StringBuilder valueBuilder, in ReadOnlySpan<char> buffer)
+        protected static Token CreateToken(in TokenType type, in int columnIndex, in int lineIndex, ref StringBuilder valueBuilder, in ReadOnlySpan<char> buffer)
         {
-            var token = new Token(type, valueBuilder?.Append(buffer).ToString() ?? new string(buffer));
+            var token = new Token(type, columnIndex, lineIndex, valueBuilder?.Append(buffer).ToString() ?? new string(buffer));
             valueBuilder = null;
             return token;
         }

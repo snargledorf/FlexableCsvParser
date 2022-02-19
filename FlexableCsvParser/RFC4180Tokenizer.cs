@@ -11,6 +11,8 @@ namespace FlexableCsvParser
         private int readBufferIndex;
         private int readBufferLength;
 
+        private int columnIndex, lineIndex;
+
         public RFC4180Tokenizer()
             : base(Delimiters.RFC4180)
         {
@@ -24,6 +26,8 @@ namespace FlexableCsvParser
             int state = TokenState.Start;
 
             StringBuilder valueBuilder = null;
+
+            int startOfTokenColumnIndex = columnIndex;
 
             while (true)
             {
@@ -58,12 +62,12 @@ namespace FlexableCsvParser
 
                         case TokenState.WhiteSpace:
                             if (!char.IsWhiteSpace(c) || c == '\r')
-                                return CreateToken(TokenType.WhiteSpace, ref valueBuilder, workingBuffer[..workingBufferIndex]);
+                                return CreateToken(TokenType.WhiteSpace, startOfTokenColumnIndex, lineIndex, ref valueBuilder, workingBuffer[..workingBufferIndex]);
                             break;
 
                         case TokenState.Text:
                             if (char.IsWhiteSpace(c) || c == ',' || c == '"')
-                                return CreateToken(TokenType.Text, ref valueBuilder, workingBuffer[..workingBufferIndex]);
+                                return CreateToken(TokenType.Text, startOfTokenColumnIndex, lineIndex, ref valueBuilder, workingBuffer[..workingBufferIndex]);
                             break;
 
                         case TokenState.StartOfEndOfRecord:
@@ -91,18 +95,20 @@ namespace FlexableCsvParser
                             break;
 
                         case TokenState.EndOfFieldDelimiter:
-                            return Token.FieldDelimiter;
+                            return new Token(TokenType.FieldDelimiter, startOfTokenColumnIndex, lineIndex);
 
                         case TokenState.EndOfEndOfRecord:
-                            return Token.EndOfRecord;
+                            columnIndex = 0;
+                            return new Token(TokenType.EndOfRecord, startOfTokenColumnIndex, lineIndex++);
 
                         case TokenState.EndOfQuote:
-                            return Token.Quote;
+                            return new Token(TokenType.Quote, startOfTokenColumnIndex, lineIndex);
 
                         case TokenState.EndOfEscape:
-                            return Token.Escape;
+                            return new Token(TokenType.Escape, startOfTokenColumnIndex, lineIndex);
                     }
 
+                    columnIndex++;
                     readBufferIndex++;
                     workingBufferIndex++;
                 }
@@ -114,18 +120,24 @@ namespace FlexableCsvParser
             switch (state)
             {
                 case TokenState.EndOfFieldDelimiter:
-                    return Token.FieldDelimiter;
+                    return new Token(TokenType.FieldDelimiter, startOfTokenColumnIndex, lineIndex);
                 case TokenState.EndOfEndOfRecord:
-                    return Token.EndOfRecord;
+                    columnIndex = 0;
+                    return new Token(TokenType.EndOfRecord, startOfTokenColumnIndex, lineIndex++);
                 case TokenState.EndOfQuote:
                 case TokenState.StartOfEscape:
-                    return Token.Quote;
+                    return new Token(TokenType.Quote, startOfTokenColumnIndex, lineIndex);
                 case TokenState.EndOfEscape:
-                    return Token.Escape;
+                    return new Token(TokenType.Escape, startOfTokenColumnIndex, lineIndex);
                 case TokenState.Start:
-                    return Token.EndOfReader;
+                    return new Token(TokenType.EndOfReader, startOfTokenColumnIndex, lineIndex);
                 default:
-                    return CreateToken(state == TokenState.WhiteSpace ? TokenType.WhiteSpace : TokenType.Text, ref valueBuilder, ReadOnlySpan<char>.Empty);
+                    return CreateToken(
+                        state == TokenState.WhiteSpace ? TokenType.WhiteSpace : TokenType.Text,
+                        startOfTokenColumnIndex,
+                        lineIndex,
+                        ref valueBuilder,
+                        ReadOnlySpan<char>.Empty);
             }
         }
     }

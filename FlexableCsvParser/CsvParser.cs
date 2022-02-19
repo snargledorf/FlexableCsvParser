@@ -113,7 +113,6 @@ namespace FlexableCsvParser
                         case ParserState.UnexpectedToken:
                             throw new InvalidDataException($"Unexpected token: State = {previousState}, Token = {token}, Buffer = {fieldBuilder}");
 
-
                         default:
                             ClearLeadingWhiteSpace();
                             break;
@@ -131,7 +130,7 @@ namespace FlexableCsvParser
                                 case TokenType.WhiteSpace:
                                     fieldBuilder.Append(token.Value);
                                     break;
-                                case TokenType.Field:
+                                case TokenType.FieldDelimiter:
                                     fieldBuilder.Append(config.Delimiters.Field);
                                     break;
                                 case TokenType.EndOfRecord:
