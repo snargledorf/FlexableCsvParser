@@ -6,17 +6,20 @@ namespace TestHarness
 {
     internal class DataRateStream : Stream
     {
-        private long bytesRead = 0;
-        private Stopwatch stopwatch = new Stopwatch();
-        private TimeSpan updateFrequency = TimeSpan.FromSeconds(1);
+        private long currentSampleBytesRead = 0;
 
-        private Stream stream;
-        private TimeSpan lastUpdate;
+        private readonly Stopwatch stopwatch = new();
 
-        public DataRateStream(Stream stream)
+        private readonly Stream stream;
+        private readonly TimeSpan sampleTimeFrame;
+
+        public DataRateStream(Stream stream, TimeSpan sampleTimeFrame)
         {
             this.stream = stream;
+            this.sampleTimeFrame = sampleTimeFrame;
         }
+
+        public event EventHandler<double> DataRateUpdate;
 
         public override bool CanRead => stream.CanRead;
 
@@ -38,18 +41,22 @@ namespace TestHarness
             if (!stopwatch.IsRunning)
                 stopwatch.Start();
 
-            if (stopwatch.Elapsed - lastUpdate >= updateFrequency)
-            {
-                double bytesPerSecond = bytesRead / stopwatch.Elapsed.TotalSeconds;
-                double kilobytesPerSecond = bytesPerSecond / 1000;
-                double megabytesPerSecond = kilobytesPerSecond / 1000;
+            int read = stream.Read(buffer, offset, count);
 
-                Console.Title =$"{megabytesPerSecond} Mb/s";
-                lastUpdate = stopwatch.Elapsed;
+            currentSampleBytesRead += read;
+
+            if (stopwatch.Elapsed >= sampleTimeFrame)
+            {
+                stopwatch.Stop();
+
+                double bytesPerSecond = currentSampleBytesRead / stopwatch.Elapsed.TotalSeconds;
+
+                OnDataRateUpdated(bytesPerSecond);
+
+                currentSampleBytesRead = 0;
+                stopwatch.Restart();
             }
 
-            int read = stream.Read(buffer, offset, count);
-            bytesRead += read;
             return read;
         }
 
@@ -66,6 +73,11 @@ namespace TestHarness
         public override void Write(byte[] buffer, int offset, int count)
         {
             stream.Write(buffer, offset, count);
+        }
+
+        protected virtual void OnDataRateUpdated(double e)
+        {
+            DataRateUpdate?.Invoke(this, e);
         }
     }
 }

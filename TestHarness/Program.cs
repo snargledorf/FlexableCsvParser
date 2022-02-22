@@ -16,7 +16,14 @@ namespace TestHarness
             const string filePath = @"..\..\big.csv";
 
             using var fs = File.OpenRead(filePath);
-            using var dataRateStream = new DataRateStream(fs);
+            using var dataRateStream = new DataRateStream(fs, TimeSpan.FromSeconds(2));
+            dataRateStream.DataRateUpdate += (_, bytesPerSecond) => {
+                double kilobytesPerSecond = bytesPerSecond / 1000;
+                double megabytesPerSecond = kilobytesPerSecond / 1000;
+
+                Console.Title = $"{megabytesPerSecond} Mb/s";
+            };
+
             using var reader = new StreamReader(dataRateStream);
 
             var stopwatch = new Stopwatch();
