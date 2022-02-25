@@ -26,11 +26,16 @@ namespace FlexableCsvParser
         private string[] currentRecord;
         private int currentFieldIndex;
 
+        private int expectedRecordLength;
+        private bool currentRecordInitialized;
+        private int recordLength;
+
         string leadingWhiteSpaceValue;
         private string possibleTrailingWhiteSpaceValue;
-
         private readonly List<string> initialRecordBuilder = new List<string>();
         private readonly StringBuilder fieldBuilder = new StringBuilder();
+
+        private Action incompleteRecordHandler;
 
         public CsvParser(TextReader reader)
             : this(reader, CsvParserConfig.Default)
@@ -55,12 +60,24 @@ namespace FlexableCsvParser
 
             currentRecord = new string[config.RecordLength];
 
+            expectedRecordLength = recordLength = currentRecord.Length;
+            currentRecordInitialized = expectedRecordLength != 0;
+
             quote = config.Delimiters.Quote;
             field = config.Delimiters.Field;
             endOfRecord = config.Delimiters.EndOfRecord;
+
+            incompleteRecordHandler = config.IncompleteRecordHandling switch
+            {
+                IncompleteRecordHandling.ThrowException => () => throw new InvalidDataException($"Record is incomplete: {string.Join(',', currentRecord.Take(currentFieldIndex))}"),
+                IncompleteRecordHandling.FillInWithEmpty => () => Array.Fill(currentRecord, string.Empty, currentFieldIndex, expectedRecordLength - currentFieldIndex),
+                IncompleteRecordHandling.FillInWithNull => () => Array.Fill(currentRecord, null, currentFieldIndex, expectedRecordLength - currentFieldIndex),
+                IncompleteRecordHandling.TruncateRecord => () => recordLength = currentFieldIndex,
+                _ => throw new InvalidOperationException($"Not a valid {nameof(IncompleteRecordHandling)}"),
+            };
         }
 
-        public bool TryReadRecord(out string[] record)
+        public bool Read()
         {
             var state = ParserState.Start;
 
@@ -89,7 +106,7 @@ namespace FlexableCsvParser
                             break;
 
                         case ParserState.EndOfRecord:
-                            record = CreateRecord();
+                            CheckRecord();
                             return true;
 
                         case ParserState.EscapeAfterLeadingEscape:
@@ -148,7 +165,6 @@ namespace FlexableCsvParser
 
             if (state == ParserState.Start)
             {
-                record = Array.Empty<string>();
                 return false;
             }
 
@@ -159,50 +175,47 @@ namespace FlexableCsvParser
             if (state == ParserState.QuotedFieldText)
                 throw new Exception($"Final quoted field did not have a closing quote: State = {previousState}, Buffer = {fieldBuilder}");
 
-            record = CreateRecord();
+            CheckRecord();
             return true;
         }
 
-        private string[] CreateRecord()
+        public string GetString(int fieldIndex)
+        {
+            return currentRecord[fieldIndex];
+        }
+
+        public bool TryReadRecord(out string[] record)
+        {
+            if (Read())
+            {
+                record = new string[recordLength];
+                Array.Copy(currentRecord, record, recordLength);
+                return true;
+            }
+
+            record = Array.Empty<string>();
+            return false;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void CheckRecord()
         {
             AddCurrentField();
 
-            if (currentRecord.Length == 0)
+            if (!currentRecordInitialized)
             {
                 currentRecord = initialRecordBuilder.ToArray();
-                currentFieldIndex = currentRecord.Length;
+                currentFieldIndex = expectedRecordLength = recordLength = currentRecord.Length;
+                currentRecordInitialized = true;
             }
-
-            int recordLength = currentRecord.Length;
-
-            if (currentFieldIndex != currentRecord.Length)
+            else if (currentFieldIndex != expectedRecordLength)
             {
-                switch (config.IncompleteRecordHandling)
-                {
-                    case IncompleteRecordHandling.ThrowException:
-                        throw new InvalidDataException($"Record is incomplete: {string.Join(',', currentRecord.Take(currentFieldIndex))}");
-
-                    case IncompleteRecordHandling.FillInWithEmpty:
-                        Array.Fill(currentRecord, string.Empty, currentFieldIndex, currentRecord.Length - currentFieldIndex);
-                        break;
-
-                    case IncompleteRecordHandling.FillInWithNull:
-                        Array.Fill(currentRecord, null, currentFieldIndex, currentRecord.Length - currentFieldIndex);
-                        break;
-
-                    case IncompleteRecordHandling.TruncateRecord:
-                        recordLength = currentFieldIndex;
-                        break;
-
-                    default:
-                        throw new InvalidOperationException($"Not a valid {nameof(IncompleteRecordHandling)}");
-                }
+                incompleteRecordHandler();
             }
-
-            var result = new string[recordLength];
-            Array.Copy(currentRecord, result, recordLength);
-
-            return result;
+            else if (config.IncompleteRecordHandling == IncompleteRecordHandling.TruncateRecord)
+            {
+                recordLength = expectedRecordLength;
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -214,7 +227,7 @@ namespace FlexableCsvParser
             string value = fieldBuilder.ToString();
             fieldBuilder.Clear();
 
-            if (currentRecord.Length == 0)
+            if (!currentRecordInitialized)
             {
                 initialRecordBuilder.Add(value);
             }
