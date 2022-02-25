@@ -19,6 +19,10 @@ namespace FlexableCsvParser
 
         private StateMachine<ParserState, TokenType> parserStateMachine;
 
+        private readonly string quote;
+        private readonly string field;
+        private readonly string endOfRecord;
+
         private string[] currentRecord;
         private int currentFieldIndex;
 
@@ -50,6 +54,10 @@ namespace FlexableCsvParser
             parserStateMachine = CsvParserStateMachineFactory.BuildParserStateMachine();
 
             currentRecord = new string[config.RecordLength];
+
+            quote = config.Delimiters.Quote;
+            field = config.Delimiters.Field;
+            endOfRecord = config.Delimiters.EndOfRecord;
         }
 
         public bool TryReadRecord(out string[] record)
@@ -88,7 +96,7 @@ namespace FlexableCsvParser
                         case ParserState.QuotedFieldEscape:
                             AppendLeadingWhiteSpace();
                             AppendTrailingWhiteSpace();
-                            fieldBuilder.Append(config.Delimiters.Quote);
+                            fieldBuilder.Append(quote);
                             break;
 
                         case ParserState.QuotedFieldLeadingWhiteSpace:
@@ -131,10 +139,10 @@ namespace FlexableCsvParser
                                     fieldBuilder.Append(token.Value);
                                     break;
                                 case TokenType.FieldDelimiter:
-                                    fieldBuilder.Append(config.Delimiters.Field);
+                                    fieldBuilder.Append(field);
                                     break;
                                 case TokenType.EndOfRecord:
-                                    fieldBuilder.Append(config.Delimiters.EndOfRecord);
+                                    fieldBuilder.Append(endOfRecord);
                                     break;
 
                                 default:
@@ -142,7 +150,7 @@ namespace FlexableCsvParser
                             }
                             break;
                         case ParserState.EscapeAfterLeadingEscape:
-                            fieldBuilder.Append(config.Delimiters.EndOfRecord);
+                            fieldBuilder.Append(endOfRecord);
                             break;
 
                         default:
