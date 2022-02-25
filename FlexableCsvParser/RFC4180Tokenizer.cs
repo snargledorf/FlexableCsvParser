@@ -82,17 +82,17 @@ namespace FlexableCsvParser
                             break;
 
                         case TokenState.EndOfFieldDelimiter:
-                            return new Token(TokenType.FieldDelimiter, startOfTokenColumnIndex, lineIndex);
+                            return new Token(TokenType.FieldDelimiter, startOfTokenColumnIndex, lineIndex, FieldValue);
 
                         case TokenState.EndOfEndOfRecord:
                             columnIndex = 0;
-                            return new Token(TokenType.EndOfRecord, startOfTokenColumnIndex, lineIndex++);
+                            return new Token(TokenType.EndOfRecord, startOfTokenColumnIndex, lineIndex++, EndOfRecordValue);
 
                         case TokenState.EndOfQuote:
-                            return new Token(TokenType.Quote, startOfTokenColumnIndex, lineIndex);
+                            return new Token(TokenType.Quote, startOfTokenColumnIndex, lineIndex, QuoteValue);
 
                         case TokenState.EndOfEscape:
-                            return new Token(TokenType.Escape, startOfTokenColumnIndex, lineIndex);
+                            return new Token(TokenType.Escape, startOfTokenColumnIndex, lineIndex, EscapeValue);
                     }
 
                     columnIndex++;
@@ -104,17 +104,17 @@ namespace FlexableCsvParser
             switch (state)
             {
                 case TokenState.EndOfFieldDelimiter:
-                    return new Token(TokenType.FieldDelimiter, startOfTokenColumnIndex, lineIndex);
+                    return new Token(TokenType.FieldDelimiter, startOfTokenColumnIndex, lineIndex, FieldValue);
                 case TokenState.EndOfEndOfRecord:
                     columnIndex = 0;
-                    return new Token(TokenType.EndOfRecord, startOfTokenColumnIndex, lineIndex++);
+                    return new Token(TokenType.EndOfRecord, startOfTokenColumnIndex, lineIndex++, EndOfRecordValue);
                 case TokenState.EndOfQuote:
                 case TokenState.StartOfEscape:
-                    return new Token(TokenType.Quote, startOfTokenColumnIndex, lineIndex);
+                    return new Token(TokenType.Quote, startOfTokenColumnIndex, lineIndex, QuoteValue);
                 case TokenState.EndOfEscape:
-                    return new Token(TokenType.Escape, startOfTokenColumnIndex, lineIndex);
+                    return new Token(TokenType.Escape, startOfTokenColumnIndex, lineIndex, EscapeValue);
                 case TokenState.Start:
-                    return new Token(TokenType.EndOfReader, startOfTokenColumnIndex, lineIndex);
+                    return new Token(TokenType.EndOfReader, startOfTokenColumnIndex, lineIndex, null);
                 default:
                     return CreateToken(
                         state == TokenState.WhiteSpace ? TokenType.WhiteSpace : TokenType.Text,

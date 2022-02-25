@@ -132,25 +132,12 @@ namespace FlexableCsvParser
                     {
                         case ParserState.QuotedFieldText:
                         case ParserState.UnquotedFieldText:
-                            switch (token.Type)
-                            {
-                                case TokenType.Text:
-                                case TokenType.WhiteSpace:
-                                    fieldBuilder.Append(token.Value);
-                                    break;
-                                case TokenType.FieldDelimiter:
-                                    fieldBuilder.Append(field);
-                                    break;
-                                case TokenType.EndOfRecord:
-                                    fieldBuilder.Append(endOfRecord);
-                                    break;
-
-                                default:
-                                    throw new InvalidDataException($"Unexpected token: State = {state}, Token = {token}, Buffer = {fieldBuilder}");
-                            }
+                            fieldBuilder.Append(token.Value);
                             break;
+
+                        // I don't think this will ever be hit???
                         case ParserState.EscapeAfterLeadingEscape:
-                            fieldBuilder.Append(endOfRecord);
+                            fieldBuilder.Append(quote);
                             break;
 
                         default:

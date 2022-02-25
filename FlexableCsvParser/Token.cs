@@ -4,17 +4,11 @@ namespace FlexableCsvParser
 {
     public struct Token
     {
-        public Token(TokenType type, int columnIndex, int lineIndex)
+        public Token(TokenType type, int columnIndex, int lineIndex, string value)
         {
             Type = type;
             ColumnIndex = columnIndex;
             LineIndex = lineIndex;
-            Value = null;
-        }
-
-        public Token(TokenType type, int columnIndex, int lineIndex, string value)
-            : this(type, columnIndex, lineIndex)
-        {
             Value = value;
         }
 

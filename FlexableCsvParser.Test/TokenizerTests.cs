@@ -17,19 +17,19 @@ namespace FlexableCsvParser.Test
             var expectedTokens = new[]
             {
                 new Token(TokenType.Text, 0, 0, "123"),
-                new Token(TokenType.FieldDelimiter, 3, 0),
+                new Token(TokenType.FieldDelimiter, 3, 0, Delimiters.RFC4180.Field),
                 new Token(TokenType.WhiteSpace, 4, 0, " "),
-                new Token(TokenType.Quote, 5, 0),
+                new Token(TokenType.Quote, 5, 0, Delimiters.RFC4180.Quote),
                 new Token(TokenType.Text, 6, 0, "456"),
-                new Token(TokenType.FieldDelimiter, 9, 0),
-                new Token(TokenType.Escape, 10, 0),
+                new Token(TokenType.FieldDelimiter, 9, 0, Delimiters.RFC4180.Field),
+                new Token(TokenType.Escape, 10, 0, Delimiters.RFC4180.Escape),
                 new Token(TokenType.Text, 12, 0, "789"),
-                new Token(TokenType.Escape, 15, 0),
-                new Token(TokenType.Quote, 17, 0),
+                new Token(TokenType.Escape, 15, 0, Delimiters.RFC4180.Escape),
+                new Token(TokenType.Quote, 17, 0, Delimiters.RFC4180.Quote),
                 new Token(TokenType.WhiteSpace, 18, 0, " "),
-                new Token(TokenType.FieldDelimiter, 19, 0),
+                new Token(TokenType.FieldDelimiter, 19, 0, Delimiters.RFC4180.Field),
                 new Token(TokenType.Text, 20, 0, "ABC"),
-                new Token(TokenType.EndOfReader, 23, 0),
+                new Token(TokenType.EndOfReader, 23, 0, null),
             };
 
             Token[] tokens = tokenizer.EnumerateTokens(new StringReader(Csv)).ToArray();
@@ -45,21 +45,21 @@ namespace FlexableCsvParser.Test
             var expectedTokens = new[]
             {
                 new Token(TokenType.Text, 0, 0, "123"),
-                new Token(TokenType.FieldDelimiter, 3, 0),
+                new Token(TokenType.FieldDelimiter, 3, 0, Delimiters.RFC4180.Field),
                 new Token(TokenType.WhiteSpace, 4, 0, " "),
-                new Token(TokenType.Quote, 5, 0),
+                new Token(TokenType.Quote, 5, 0, Delimiters.RFC4180.Quote),
                 new Token(TokenType.Text, 6, 0, "456"),
-                new Token(TokenType.FieldDelimiter, 9, 0),
-                new Token(TokenType.Escape, 10, 0),
+                new Token(TokenType.FieldDelimiter, 9, 0, Delimiters.RFC4180.Field),
+                new Token(TokenType.Escape, 10, 0, Delimiters.RFC4180.Escape),
                 new Token(TokenType.Text, 12, 0, "789"),
-                new Token(TokenType.Escape, 15, 0),
-                new Token(TokenType.Quote, 17, 0),
+                new Token(TokenType.Escape, 15, 0, Delimiters.RFC4180.Escape),
+                new Token(TokenType.Quote, 17, 0, Delimiters.RFC4180.Quote),
                 new Token(TokenType.WhiteSpace, 18, 0, " "),
-                new Token(TokenType.FieldDelimiter, 19, 0),
-                new Token(TokenType.Quote, 20, 0),
+                new Token(TokenType.FieldDelimiter, 19, 0, Delimiters.RFC4180.Field),
+                new Token(TokenType.Quote, 20, 0, Delimiters.RFC4180.Quote),
                 new Token(TokenType.Text, 21, 0, "ABC"),
-                new Token(TokenType.Quote, 24, 0),
-                new Token(TokenType.EndOfReader, 25, 0),
+                new Token(TokenType.Quote, 24, 0, Delimiters.RFC4180.Quote),
+                new Token(TokenType.EndOfReader, 25, 0, null),
             };
 
             Token[] tokens = tokenizer.EnumerateTokens(new StringReader(Csv)).ToArray();
@@ -75,19 +75,19 @@ namespace FlexableCsvParser.Test
             var expectedTokens = new[]
             {
                 new Token(TokenType.Text, 0, 0, "123"),
-                new Token(TokenType.FieldDelimiter, 3, 0),
+                new Token(TokenType.FieldDelimiter, 3, 0, Delimiters.RFC4180.Field),
                 new Token(TokenType.WhiteSpace, 4, 0, " "),
-                new Token(TokenType.Quote, 5, 0),
+                new Token(TokenType.Quote, 5, 0, Delimiters.RFC4180.Quote),
                 new Token(TokenType.Text, 6, 0, "456"),
-                new Token(TokenType.FieldDelimiter, 9, 0),
-                new Token(TokenType.Escape, 10, 0),
+                new Token(TokenType.FieldDelimiter, 9, 0, Delimiters.RFC4180.Field),
+                new Token(TokenType.Escape, 10, 0, Delimiters.RFC4180.Escape),
                 new Token(TokenType.Text, 12, 0, "789"),
-                new Token(TokenType.Escape, 15, 0),
-                new Token(TokenType.Quote, 17, 0),
+                new Token(TokenType.Escape, 15, 0, Delimiters.RFC4180.Escape),
+                new Token(TokenType.Quote, 17, 0, Delimiters.RFC4180.Quote),
                 new Token(TokenType.WhiteSpace, 18, 0, " "),
-                new Token(TokenType.FieldDelimiter, 19, 0),
+                new Token(TokenType.FieldDelimiter, 19, 0, Delimiters.RFC4180.Field),
                 new Token(TokenType.Text, 20, 0, "ABC"),
-                new Token(TokenType.EndOfReader, 23, 0),
+                new Token(TokenType.EndOfReader, 23, 0, null),
             };
 
             Token[] tokens = tokenizer.EnumerateTokens(new StringReader(Csv)).ToArray();
@@ -103,21 +103,21 @@ namespace FlexableCsvParser.Test
             var expectedTokens = new[]
             {
                 new Token(TokenType.Text, 0, 0, "123"),
-                new Token(TokenType.FieldDelimiter, 3, 0),
+                new Token(TokenType.FieldDelimiter, 3, 0, Delimiters.RFC4180.Field),
                 new Token(TokenType.WhiteSpace, 4, 0, " "),
-                new Token(TokenType.Quote, 5, 0),
+                new Token(TokenType.Quote, 5, 0, Delimiters.RFC4180.Quote),
                 new Token(TokenType.Text, 6, 0, "456"),
-                new Token(TokenType.FieldDelimiter, 9, 0),
-                new Token(TokenType.Escape, 10, 0),
+                new Token(TokenType.FieldDelimiter, 9, 0, Delimiters.RFC4180.Field),
+                new Token(TokenType.Escape, 10, 0, Delimiters.RFC4180.Escape),
                 new Token(TokenType.Text, 12, 0, "789"),
-                new Token(TokenType.Escape, 15, 0),
-                new Token(TokenType.Quote, 17, 0),
+                new Token(TokenType.Escape, 15, 0, Delimiters.RFC4180.Escape),
+                new Token(TokenType.Quote, 17, 0, Delimiters.RFC4180.Quote),
                 new Token(TokenType.WhiteSpace, 18, 0, " "),
-                new Token(TokenType.FieldDelimiter, 19, 0),
-                new Token(TokenType.Quote, 20, 0),
+                new Token(TokenType.FieldDelimiter, 19, 0, Delimiters.RFC4180.Field),
+                new Token(TokenType.Quote, 20, 0, Delimiters.RFC4180.Quote),
                 new Token(TokenType.Text, 21, 0, "ABC"),
-                new Token(TokenType.Quote, 24, 0),
-                new Token(TokenType.EndOfReader, 25, 0),
+                new Token(TokenType.Quote, 24, 0, Delimiters.RFC4180.Quote),
+                new Token(TokenType.EndOfReader, 25, 0, null),
             };
 
             Token[] tokens = tokenizer.EnumerateTokens(new StringReader(Csv)).ToArray();
@@ -133,18 +133,18 @@ namespace FlexableCsvParser.Test
             var expectedTokens = new[]
             {
                 new Token(TokenType.Text, 0, 0, "123"),
-                new Token(TokenType.FieldDelimiter, 3, 0),
+                new Token(TokenType.FieldDelimiter, 3, 0, "<Foo"),
                 new Token(TokenType.WhiteSpace, 7, 0, " "),
-                new Token(TokenType.Quote, 8, 0),
+                new Token(TokenType.Quote, 8, 0, "<FooB"),
                 new Token(TokenType.Text, 13, 0, "456"),
-                new Token(TokenType.FieldDelimiter, 16, 0),
+                new Token(TokenType.FieldDelimiter, 16, 0, "<Foo"),
                 new Token(TokenType.Text, 20, 0, "789"),
-                new Token(TokenType.Quote, 23, 0),
+                new Token(TokenType.Quote, 23, 0, "<FooB"),
                 new Token(TokenType.WhiteSpace, 28, 0, " "),
-                new Token(TokenType.FieldDelimiter, 29, 0),
+                new Token(TokenType.FieldDelimiter, 29, 0, "<Foo"),
                 new Token(TokenType.Text, 33, 0, "ABC"),
-                new Token(TokenType.EndOfRecord, 36, 0),
-                new Token(TokenType.EndOfReader, 0, 1),
+                new Token(TokenType.EndOfRecord, 36, 0, "<FooBar"),
+                new Token(TokenType.EndOfReader, 0, 1, null),
             };
 
             Token[] tokens = tokenizer.EnumerateTokens(new StringReader(Csv)).ToArray();
@@ -160,20 +160,20 @@ namespace FlexableCsvParser.Test
             var expectedTokens = new[]
             {
                 new Token(TokenType.Text, 0, 0, "123"),
-                new Token(TokenType.FieldDelimiter, 3, 0),
+                new Token(TokenType.FieldDelimiter, 3, 0, Delimiters.RFC4180.Field),
                 new Token(TokenType.WhiteSpace, 4, 0, " "),
-                new Token(TokenType.Quote, 5, 0),
+                new Token(TokenType.Quote, 5, 0, Delimiters.RFC4180.Quote),
                 new Token(TokenType.Text, 6, 0, "456"),
-                new Token(TokenType.FieldDelimiter, 9, 0),
-                new Token(TokenType.Escape, 10, 0),
+                new Token(TokenType.FieldDelimiter, 9, 0, Delimiters.RFC4180.Field),
+                new Token(TokenType.Escape, 10, 0, Delimiters.RFC4180.Escape),
                 new Token(TokenType.Text, 12, 0, "789"),
-                new Token(TokenType.Escape, 15, 0),
-                new Token(TokenType.Quote, 17, 0),
+                new Token(TokenType.Escape, 15, 0, Delimiters.RFC4180.Escape),
+                new Token(TokenType.Quote, 17, 0, Delimiters.RFC4180.Quote),
                 new Token(TokenType.WhiteSpace, 18, 0, " "),
-                new Token(TokenType.FieldDelimiter, 19, 0),
+                new Token(TokenType.FieldDelimiter, 19, 0, Delimiters.RFC4180.Field),
                 new Token(TokenType.Text, 20, 0, "ABC"),
-                new Token(TokenType.EndOfRecord, 23, 0),
-                new Token(TokenType.EndOfReader, 0, 1),
+                new Token(TokenType.EndOfRecord, 23, 0, Delimiters.RFC4180.EndOfRecord),
+                new Token(TokenType.EndOfReader, 0, 1, null),
             };
 
             Token[] tokens = tokenizer.EnumerateTokens(new StringReader(Csv)).ToArray();
@@ -189,20 +189,20 @@ namespace FlexableCsvParser.Test
             var expectedTokens = new[]
             {
                 new Token(TokenType.Text, 0, 0, "123"),
-                new Token(TokenType.FieldDelimiter, 3, 0),
+                new Token(TokenType.FieldDelimiter, 3, 0, Delimiters.RFC4180.Field),
                 new Token(TokenType.WhiteSpace, 4, 0, " "),
-                new Token(TokenType.Quote, 5, 0),
+                new Token(TokenType.Quote, 5, 0, Delimiters.RFC4180.Quote),
                 new Token(TokenType.Text, 6, 0, "456"),
-                new Token(TokenType.FieldDelimiter, 9, 0),
-                new Token(TokenType.Escape, 10, 0),
+                new Token(TokenType.FieldDelimiter, 9, 0, Delimiters.RFC4180.Field),
+                new Token(TokenType.Escape, 10, 0, Delimiters.RFC4180.Escape),
                 new Token(TokenType.Text, 12, 0, "789"),
-                new Token(TokenType.Escape, 15, 0),
-                new Token(TokenType.Quote, 17, 0),
+                new Token(TokenType.Escape, 15, 0, Delimiters.RFC4180.Escape),
+                new Token(TokenType.Quote, 17, 0, Delimiters.RFC4180.Quote),
                 new Token(TokenType.WhiteSpace, 18, 0, " "),
-                new Token(TokenType.FieldDelimiter, 19, 0),
+                new Token(TokenType.FieldDelimiter, 19, 0, Delimiters.RFC4180.Field),
                 new Token(TokenType.Text, 20, 0, "ABC"),
-                new Token(TokenType.EndOfRecord, 23, 0),
-                new Token(TokenType.EndOfReader, 0, 1),
+                new Token(TokenType.EndOfRecord, 23, 0, Delimiters.RFC4180.EndOfRecord),
+                new Token(TokenType.EndOfReader, 0, 1, null),
             };
 
             Token[] tokens = tokenizer.EnumerateTokens(new StringReader(Csv)).ToArray();
@@ -239,15 +239,15 @@ namespace FlexableCsvParser.Test
             var expectedTokens = new[]
             {
                 new Token(TokenType.Text, 0, 0, "123"),
-                new Token(TokenType.FieldDelimiter, 3, 0),
+                new Token(TokenType.FieldDelimiter, 3, 0, Delimiters.RFC4180.Field),
                 new Token(TokenType.WhiteSpace, 4, 0, " "),
                 new Token(TokenType.Text, 5, 0, "\"456"),
-                new Token(TokenType.FieldDelimiter, 9, 0),
+                new Token(TokenType.FieldDelimiter, 9, 0, Delimiters.RFC4180.Field),
                 new Token(TokenType.Text, 10, 0, "\"\"789\"\"\""),
                 new Token(TokenType.WhiteSpace, 18, 0, " "),
-                new Token(TokenType.FieldDelimiter, 19, 0),
+                new Token(TokenType.FieldDelimiter, 19, 0, Delimiters.RFC4180.Field),
                 new Token(TokenType.Text, 20, 0, "\"ABC\""),
-                new Token(TokenType.EndOfReader, 25, 0),
+                new Token(TokenType.EndOfReader, 25, 0, null),
             };
 
             Token[] tokens = tokenizer.EnumerateTokens(new StringReader(Csv)).ToArray();
@@ -263,23 +263,23 @@ namespace FlexableCsvParser.Test
             var expectedTokens = new[]
             {
                 new Token(TokenType.Text, 0, 0, "123"),
-                new Token(TokenType.FieldDelimiter, 3, 0),
+                new Token(TokenType.FieldDelimiter, 3, 0, Delimiters.RFC4180.Field),
                 new Token(TokenType.WhiteSpace, 4, 0, " "),
-                new Token(TokenType.Quote, 5, 0),
+                new Token(TokenType.Quote, 5, 0, Delimiters.RFC4180.Quote),
                 new Token(TokenType.Text, 6, 0, "456"),
-                new Token(TokenType.FieldDelimiter, 9, 0),
-                new Token(TokenType.Quote, 10, 0),
-                new Token(TokenType.Quote, 11, 0),
+                new Token(TokenType.FieldDelimiter, 9, 0, Delimiters.RFC4180.Field),
+                new Token(TokenType.Quote, 10, 0, Delimiters.RFC4180.Quote),
+                new Token(TokenType.Quote, 11, 0, Delimiters.RFC4180.Quote),
                 new Token(TokenType.Text, 12, 0, "789"),
-                new Token(TokenType.Quote, 15, 0),
-                new Token(TokenType.Quote, 16, 0),
-                new Token(TokenType.Quote, 17, 0),
+                new Token(TokenType.Quote, 15, 0, Delimiters.RFC4180.Quote),
+                new Token(TokenType.Quote, 16, 0, Delimiters.RFC4180.Quote),
+                new Token(TokenType.Quote, 17, 0, Delimiters.RFC4180.Quote),
                 new Token(TokenType.WhiteSpace, 18, 0, " "),
-                new Token(TokenType.FieldDelimiter, 19, 0),
-                new Token(TokenType.Quote, 20, 0),
+                new Token(TokenType.FieldDelimiter, 19, 0, Delimiters.RFC4180.Field),
+                new Token(TokenType.Quote, 20, 0, Delimiters.RFC4180.Quote),
                 new Token(TokenType.Text, 21, 0, "ABC"),
-                new Token(TokenType.Quote, 24, 0),
-                new Token(TokenType.EndOfReader, 25, 0),
+                new Token(TokenType.Quote, 24, 0, Delimiters.RFC4180.Quote),
+                new Token(TokenType.EndOfReader, 25, 0, null),
             };
 
             Token[] tokens = tokenizer.EnumerateTokens(new StringReader(Csv)).ToArray();

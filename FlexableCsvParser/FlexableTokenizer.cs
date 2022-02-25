@@ -52,17 +52,17 @@ namespace FlexableCsvParser
                                 return CreateToken(TokenType.WhiteSpace, startOfTokenColumnIndex, lineIndex, new ReadOnlySpan<char>(readBuffer, tokenStartIndex, readBufferIndex - tokenStartIndex));
 
                             case FlexableTokenizerTokenState.EndOfFieldDelimiter:
-                                return new Token(TokenType.FieldDelimiter, startOfTokenColumnIndex, lineIndex);
+                                return new Token(TokenType.FieldDelimiter, startOfTokenColumnIndex, lineIndex, FieldValue);
 
                             case FlexableTokenizerTokenState.EndOfEndOfRecord:
                                 columnIndex = 0;
-                                return new Token(TokenType.EndOfRecord, startOfTokenColumnIndex, lineIndex++);
+                                return new Token(TokenType.EndOfRecord, startOfTokenColumnIndex, lineIndex++, EndOfRecordValue);
 
                             case FlexableTokenizerTokenState.EndOfQuote:
-                                return new Token(TokenType.Quote, startOfTokenColumnIndex, lineIndex);
+                                return new Token(TokenType.Quote, startOfTokenColumnIndex, lineIndex, QuoteValue);
 
                             case FlexableTokenizerTokenState.EndOfEscape:
-                                return new Token(TokenType.Escape, startOfTokenColumnIndex, lineIndex);
+                                return new Token(TokenType.Escape, startOfTokenColumnIndex, lineIndex, EscapeValue);
                         }
                     }
 
@@ -78,16 +78,16 @@ namespace FlexableCsvParser
             switch (state)
             {
                 case FlexableTokenizerTokenState.EndOfFieldDelimiter:
-                    return new Token(TokenType.FieldDelimiter, startOfTokenColumnIndex, lineIndex);
+                    return new Token(TokenType.FieldDelimiter, startOfTokenColumnIndex, lineIndex, FieldValue);
                 case FlexableTokenizerTokenState.EndOfEndOfRecord:
                     columnIndex = 0;
-                    return new Token(TokenType.EndOfRecord, startOfTokenColumnIndex, lineIndex++);
+                    return new Token(TokenType.EndOfRecord, startOfTokenColumnIndex, lineIndex++, EndOfRecordValue);
                 case FlexableTokenizerTokenState.EndOfQuote:
-                    return new Token(TokenType.Quote, startOfTokenColumnIndex, lineIndex);
+                    return new Token(TokenType.Quote, startOfTokenColumnIndex, lineIndex, QuoteValue);
                 case FlexableTokenizerTokenState.EndOfEscape:
-                    return new Token(TokenType.Escape, startOfTokenColumnIndex, lineIndex);
+                    return new Token(TokenType.Escape, startOfTokenColumnIndex, lineIndex, EscapeValue);
                 case FlexableTokenizerTokenState.Start:
-                    return new Token(TokenType.EndOfReader, startOfTokenColumnIndex, lineIndex);
+                    return new Token(TokenType.EndOfReader, startOfTokenColumnIndex, lineIndex, null);
                 default:
                     return CreateToken(
                         state == FlexableTokenizerTokenState.WhiteSpace ? TokenType.WhiteSpace : TokenType.Text,

@@ -10,9 +10,19 @@ namespace FlexableCsvParser
         public static readonly Tokenizer RFC4180 = new RFC4180Tokenizer();
         public static readonly Tokenizer Default = RFC4180;
 
+        protected readonly string FieldValue;
+        protected readonly string EndOfRecordValue;
+        protected readonly string QuoteValue;
+        protected readonly string EscapeValue;
+
         protected Tokenizer(Delimiters delimiters)
         {
             Delimiters = delimiters;
+
+            FieldValue = delimiters.Field;
+            EndOfRecordValue = delimiters.EndOfRecord;
+            QuoteValue = delimiters.Quote;
+            EscapeValue = delimiters.Escape;
         }
 
         public Delimiters Delimiters { get; }

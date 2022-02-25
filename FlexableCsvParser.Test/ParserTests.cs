@@ -9,13 +9,13 @@ namespace FlexableCsvParser.Test
         [TestMethod]
         public void SimpleRFC4180Csv()
         {
-            const string Csv = "123, \"456,\"\"789\"\"\" ,ABC";
+            const string Csv = "123, \"456 ,\"\"789\"\"\" ,ABC";
             var parser = new CsvParser(new StringReader(Csv));
 
             var expectedRecord = new[]
             {
                 "123",
-                "456,\"789\"",
+                "456 ,\"789\"",
                 "ABC"
             };
 
