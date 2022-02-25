@@ -7,9 +7,12 @@ namespace FlexableCsvParser
 {
     public class RFC4180Tokenizer : Tokenizer
     {
-        private readonly Memory<char> readBuffer = new char[4096];
+        private char[] readBuffer = new char[4096];
+
         private int readBufferIndex;
         private int readBufferLength;
+
+        private int tokenStartIndex;
 
         private int columnIndex, lineIndex;
 
@@ -21,31 +24,16 @@ namespace FlexableCsvParser
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public override Token NextToken(TextReader reader)
         {
-            var readBufferSpan = readBuffer.Span;
-
             int state = TokenState.Start;
 
-            StringBuilder valueBuilder = null;
-
             int startOfTokenColumnIndex = columnIndex;
+            tokenStartIndex = readBufferIndex;
 
-            while (true)
+            while (FillBuffer(reader))
             {
-                if (readBufferIndex >= readBufferLength)
+                do
                 {
-                    readBufferLength = reader.Read(readBufferSpan);
-                    readBufferIndex = 0;
-                }
-
-                if (readBufferLength == 0)
-                    break;
-
-                ReadOnlySpan<char> workingBuffer = readBufferSpan[readBufferIndex..readBufferLength];
-                int workingBufferIndex = 0;
-
-                while (workingBufferIndex < workingBuffer.Length)
-                {
-                    char c = workingBuffer[workingBufferIndex];
+                    char c = readBuffer[readBufferIndex];
 
                     switch (state)
                     {
@@ -62,12 +50,12 @@ namespace FlexableCsvParser
 
                         case TokenState.WhiteSpace:
                             if (!char.IsWhiteSpace(c) || c == '\r')
-                                return CreateToken(TokenType.WhiteSpace, startOfTokenColumnIndex, lineIndex, ref valueBuilder, workingBuffer[..workingBufferIndex]);
+                                return CreateToken(TokenType.WhiteSpace, startOfTokenColumnIndex, lineIndex, new ReadOnlySpan<char>(readBuffer, tokenStartIndex, readBufferIndex - tokenStartIndex));
                             break;
 
                         case TokenState.Text:
-                            if (char.IsWhiteSpace(c) || c == ',' || c == '"')
-                                return CreateToken(TokenType.Text, startOfTokenColumnIndex, lineIndex, ref valueBuilder, workingBuffer[..workingBufferIndex]);
+                            if (c == ',' || c == '"' || char.IsWhiteSpace(c))
+                                return CreateToken(TokenType.Text, startOfTokenColumnIndex, lineIndex, new ReadOnlySpan<char>(readBuffer, tokenStartIndex, readBufferIndex - tokenStartIndex));
                             break;
 
                         case TokenState.StartOfEndOfRecord:
@@ -89,7 +77,6 @@ namespace FlexableCsvParser
                             }
                             else
                             {
-                                state = TokenState.EndOfQuote;
                                 goto case TokenState.EndOfQuote;
                             }
                             break;
@@ -110,11 +97,8 @@ namespace FlexableCsvParser
 
                     columnIndex++;
                     readBufferIndex++;
-                    workingBufferIndex++;
                 }
-
-                valueBuilder ??= new StringBuilder(workingBuffer.Length + 80);
-                valueBuilder.Append(workingBuffer);
+                while (readBufferIndex < readBufferLength);
             }
 
             switch (state)
@@ -136,9 +120,34 @@ namespace FlexableCsvParser
                         state == TokenState.WhiteSpace ? TokenType.WhiteSpace : TokenType.Text,
                         startOfTokenColumnIndex,
                         lineIndex,
-                        ref valueBuilder,
-                        ReadOnlySpan<char>.Empty);
+                        new ReadOnlySpan<char>(readBuffer, tokenStartIndex, readBufferIndex - tokenStartIndex));
             }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private bool FillBuffer(TextReader reader)
+        {
+            if (readBufferIndex < readBufferLength)
+                return true;
+                    
+            if (tokenStartIndex != 0)
+            {
+                Array.Copy(readBuffer, tokenStartIndex, readBuffer, 0, readBufferLength - tokenStartIndex);
+                readBufferIndex -= tokenStartIndex;
+                readBufferLength -= tokenStartIndex;
+                tokenStartIndex = 0;
+            }
+            else if (readBufferLength != 0)
+            {
+                Array.Resize(ref readBuffer, Math.Min(readBuffer.Length * 2, 0x7FFFFFC7));
+            }
+
+            readBufferIndex -= tokenStartIndex;
+            readBufferLength -= tokenStartIndex;
+            int charsToRead = readBuffer.Length - readBufferLength;
+            readBufferLength += reader.Read(readBuffer, readBufferLength, charsToRead);
+
+            return readBufferLength != readBufferIndex;
         }
     }
 

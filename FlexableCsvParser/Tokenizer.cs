@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Text;
 namespace FlexableCsvParser
 {
@@ -27,11 +28,10 @@ namespace FlexableCsvParser
 
         public abstract Token NextToken(TextReader reader);
 
-        protected static Token CreateToken(in TokenType type, in int columnIndex, in int lineIndex, ref StringBuilder valueBuilder, in ReadOnlySpan<char> buffer)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static Token CreateToken(in TokenType type, in int columnIndex, in int lineIndex, in ReadOnlySpan<char> buffer)
         {
-            var token = new Token(type, columnIndex, lineIndex, valueBuilder?.Append(buffer).ToString() ?? new string(buffer));
-            valueBuilder = null;
-            return token;
+            return new Token(type, columnIndex, lineIndex, new string(buffer));
         }
 
         public static Tokenizer For(Delimiters delimiters)
