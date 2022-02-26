@@ -85,8 +85,8 @@ namespace FlexableCsvParser
 
             ParserState previousState;
 
-            Token token;
-            while ((token = tokenizer.NextToken(reader)).Type != TokenType.EndOfReader)
+            Token token = tokenizer.NextToken(reader);
+            while (token.Type != TokenType.EndOfReader)
             {
                 previousState = state;
                 if (parserStateMachine.TryTransition(state, token.Type, out ParserState newState))
@@ -161,6 +161,8 @@ namespace FlexableCsvParser
                             throw new InvalidDataException($"Unexpected state: State = {state}, Token = {token}, Buffer = { fieldBuilder }");
                     }
                 }
+
+                token = tokenizer.NextToken(reader);
             }
 
             if (state == ParserState.Start)
