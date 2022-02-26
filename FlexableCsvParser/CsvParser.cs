@@ -164,16 +164,11 @@ namespace FlexableCsvParser
             }
 
             if (state == ParserState.Start)
-            {
                 return false;
-            }
-
-            previousState = state;
-            if (state != ParserState.Start && parserStateMachine.TryGetDefaultForState(state, out ParserState defaultState))
-                state = defaultState;
-
-            if (state == ParserState.QuotedFieldText)
-                throw new Exception($"Final quoted field did not have a closing quote: State = {previousState}, Buffer = {fieldBuilder}");
+            
+            if (state == ParserState.QuotedFieldText || 
+                (parserStateMachine.TryGetDefaultForState(state, out ParserState defaultState) && defaultState == ParserState.QuotedFieldText))
+                throw new Exception($"Final quoted field did not have a closing quote: State = {state}, Buffer = {fieldBuilder}");
 
             CheckRecord();
             return true;
