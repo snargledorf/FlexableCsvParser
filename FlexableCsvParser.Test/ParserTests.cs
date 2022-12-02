@@ -1,4 +1,8 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace FlexableCsvParser.Test
@@ -7,27 +11,34 @@ namespace FlexableCsvParser.Test
     public class ParserTests
     {
         [TestMethod]
-        public void SimpleRFC4180Csv()
+        public async Task SimpleRFC4180Csv()
         {
-            const string Csv = "123, \"456 ,\"\"789\"\"\" ,ABC";
+            const string Csv = """"
+                123, "456 ,""789""" ,ABC
+                """";
             var parser = new CsvParser(new StringReader(Csv));
 
             var expectedRecord = new[]
             {
                 "123",
-                "456 ,\"789\"",
+                """
+                456 ,"789"
+                """,
                 "ABC"
             };
 
-            Assert.IsTrue(parser.TryReadRecord(out string[] record));
-            CollectionAssert.AreEqual(expectedRecord, record);
-            Assert.IsFalse(parser.TryReadRecord(out _));
+            (bool success, ReadOnlyMemory<string> record) = await parser.ReadRecordAsync();
+            Assert.IsTrue(success);
+            CollectionAssert.AreEqual(expectedRecord.ToArray(), record.ToArray());
+
+            (success, _) = await parser.ReadRecordAsync();
+            Assert.IsFalse(success);
         }
 
         [TestMethod]
-        public void MultipleSharedDelimitersCsvFlexable()
+        public async Task MultipleSharedDelimitersCsvFlexable()
         {
-            const string Csv = "123<Foo <FooB456<Foo789<FooB <FooABC<FooBar";
+            const string Csv = "123<Foo <FooB456<Foo789<FooB <FooABC<FooBar123<Foo <FooB456<Foo789<FooB <FooABC";
             var parser = new CsvParser(new StringReader(Csv), new("<Foo", "<FooBar", "<FooB"));
 
             var expectedRecord = new[]
@@ -37,13 +48,20 @@ namespace FlexableCsvParser.Test
                 "ABC"
             };
 
-            Assert.IsTrue(parser.TryReadRecord(out string[] record));
-            CollectionAssert.AreEqual(expectedRecord, record);
-            Assert.IsFalse(parser.TryReadRecord(out _));
+            (bool success, ReadOnlyMemory<string> record) = await parser.ReadRecordAsync();
+            Assert.IsTrue(success);
+            CollectionAssert.AreEqual(expectedRecord, record.ToArray());
+
+            (success, record) = await parser.ReadRecordAsync();
+            Assert.IsTrue(success);
+            CollectionAssert.AreEqual(expectedRecord, record.ToArray());
+
+            (success, _) = await parser.ReadRecordAsync();
+            Assert.IsFalse(success);
         }
 
         [TestMethod]
-        public void SimpleRFC4180EmptyQuotedFieldTrailingWhiteSpaceCsv()
+        public async Task SimpleRFC4180EmptyQuotedFieldTrailingWhiteSpaceCsv()
         {
             const string Csv = "123, \"\" ,ABC";
             var parser = new CsvParser(new StringReader(Csv));
@@ -55,13 +73,16 @@ namespace FlexableCsvParser.Test
                 "ABC"
             };
 
-            Assert.IsTrue(parser.TryReadRecord(out string[] record));
-            CollectionAssert.AreEqual(expectedRecord, record);
-            Assert.IsFalse(parser.TryReadRecord(out _));
+            (bool success, ReadOnlyMemory<string> record) = await parser.ReadRecordAsync();
+            Assert.IsTrue(success);
+            CollectionAssert.AreEqual(expectedRecord, record.ToArray());
+
+            (success, _) = await parser.ReadRecordAsync();
+            Assert.IsFalse(success);
         }
 
         [TestMethod]
-        public void SimpleRFC4180EmptyQuotedFieldCsv()
+        public async Task SimpleRFC4180EmptyQuotedFieldCsv()
         {
             const string Csv = "123, \"\",ABC";
             var parser = new CsvParser(new StringReader(Csv));
@@ -73,13 +94,16 @@ namespace FlexableCsvParser.Test
                 "ABC"
             };
 
-            Assert.IsTrue(parser.TryReadRecord(out string[] record));
-            CollectionAssert.AreEqual(expectedRecord, record);
-            Assert.IsFalse(parser.TryReadRecord(out _));
+            (bool success, ReadOnlyMemory<string> record) = await parser.ReadRecordAsync();
+            Assert.IsTrue(success);
+            CollectionAssert.AreEqual(expectedRecord, record.ToArray());
+
+            (success, _) = await parser.ReadRecordAsync();
+            Assert.IsFalse(success);
         }
 
         [TestMethod]
-        public void SimpleRFC4180EscapeAtStartOfQuotedFieldCsv()
+        public async Task SimpleRFC4180EscapeAtStartOfQuotedFieldCsv()
         {
             const string Csv = "123, \"\"\"\"\"\" ,ABC";
             var parser = new CsvParser(new StringReader(Csv));
@@ -91,13 +115,16 @@ namespace FlexableCsvParser.Test
                 "ABC"
             };
 
-            Assert.IsTrue(parser.TryReadRecord(out string[] record));
-            CollectionAssert.AreEqual(expectedRecord, record);
-            Assert.IsFalse(parser.TryReadRecord(out _));
+            (bool success, ReadOnlyMemory<string> record) = await parser.ReadRecordAsync();
+            Assert.IsTrue(success);
+            CollectionAssert.AreEqual(expectedRecord, record.ToArray());
+
+            (success, _) = await parser.ReadRecordAsync();
+            Assert.IsFalse(success);
         }
 
         [TestMethod]
-        public void SimpleRFC4180QuotedTextInQuotedFieldCsv()
+        public async Task SimpleRFC4180QuotedTextInQuotedFieldCsv()
         {
             const string Csv = "123, \"\"\"Bar\"\"\" ,ABC";
             var parser = new CsvParser(new StringReader(Csv));
@@ -109,53 +136,57 @@ namespace FlexableCsvParser.Test
                 "ABC"
             };
 
-            Assert.IsTrue(parser.TryReadRecord(out string[] record));
-            CollectionAssert.AreEqual(expectedRecord, record);
-            Assert.IsFalse(parser.TryReadRecord(out _));
+            (bool success, ReadOnlyMemory<string> record) = await parser.ReadRecordAsync();
+            Assert.IsTrue(success);
+            CollectionAssert.AreEqual(expectedRecord, record.ToArray());
+
+            (success, _) = await parser.ReadRecordAsync();
+            Assert.IsFalse(success);
         }
 
         [TestMethod]
         [ExpectedException(typeof(InvalidDataException))]
-        public void SimpleRFC4180InvalidEscapeAtStartFieldCsv()
+        public async Task SimpleRFC4180InvalidEscapeAtStartFieldCsv()
         {
             const string Csv = "123, \"\"Bar";
             var parser = new CsvParser(new StringReader(Csv));
-            parser.TryReadRecord(out string[] _);
+            await parser.ReadRecordAsync();
         }
 
         [TestMethod]
         [ExpectedException(typeof(InvalidDataException))]
-        public void IncompleteRecordDefault()
+        public async Task IncompleteRecordDefault()
         {
             const string Csv = "123,Foo";
             var parser = new CsvParser(new StringReader(Csv), new(recordLength: 3));
-            parser.TryReadRecord(out string[] _);
+            await parser.ReadRecordAsync();
         }
 
         [TestMethod]
         [ExpectedException(typeof(InvalidDataException))]
-        public void IncompleteRecordWithoutSpecifyingRecordLength()
+        public async Task IncompleteRecordWithoutSpecifyingRecordLength()
         {
             const string Csv = "123,Foo,Bar\r\n456,Hello";
             var parser = new CsvParser(new StringReader(Csv));
-            
-            Assert.IsTrue(parser.TryReadRecord(out string[] _));
+
+            var record = await parser.ReadRecordAsync();
+            Assert.IsNotNull(record);
 
             // This one throws the exception
-            parser.TryReadRecord(out string[] _);
+            await parser.ReadRecordAsync();
         }
 
         [TestMethod]
         [ExpectedException(typeof(InvalidDataException))]
-        public void IncompleteRecordThrowException()
+        public async Task IncompleteRecordThrowException()
         {
             const string Csv = "123,Foo";
             var parser = new CsvParser(new StringReader(Csv), new(recordLength: 3, incompleteRecordHandling: IncompleteRecordHandling.ThrowException));
-            parser.TryReadRecord(out string[] _);
+            await parser.ReadRecordAsync();
         }
 
         [TestMethod]
-        public void IncompleteRecordFillEmpty()
+        public async Task IncompleteRecordFillEmpty()
         {
             const string Csv = "123,Foo";
             var parser = new CsvParser(new StringReader(Csv), new(recordLength: 3, incompleteRecordHandling: IncompleteRecordHandling.FillInWithEmpty));
@@ -167,13 +198,16 @@ namespace FlexableCsvParser.Test
                 ""
             };
 
-            Assert.IsTrue(parser.TryReadRecord(out string[] record));
-            CollectionAssert.AreEqual(expectedRecord, record);
-            Assert.IsFalse(parser.TryReadRecord(out _));
+            (bool success, ReadOnlyMemory<string> record) = await parser.ReadRecordAsync();
+            Assert.IsTrue(success);
+            CollectionAssert.AreEqual(expectedRecord, record.ToArray());
+
+            (success, _) = await parser.ReadRecordAsync();
+            Assert.IsFalse(success);
         }
 
         [TestMethod]
-        public void IncompleteRecordFillNull()
+        public async Task IncompleteRecordFillNull()
         {
             const string Csv = "123,Foo";
             var parser = new CsvParser(new StringReader(Csv), new(recordLength: 3, incompleteRecordHandling: IncompleteRecordHandling.FillInWithNull));
@@ -185,13 +219,16 @@ namespace FlexableCsvParser.Test
                 null
             };
 
-            Assert.IsTrue(parser.TryReadRecord(out string[] record));
-            CollectionAssert.AreEqual(expectedRecord, record);
-            Assert.IsFalse(parser.TryReadRecord(out _));
+            (bool success, ReadOnlyMemory<string> record) = await parser.ReadRecordAsync();
+            Assert.IsTrue(success);
+            CollectionAssert.AreEqual(expectedRecord, record.ToArray());
+
+            (success, _) = await parser.ReadRecordAsync();
+            Assert.IsFalse(success);
         }
 
         [TestMethod]
-        public void IncompleteRecordTruncate()
+        public async Task IncompleteRecordTruncate()
         {
             const string Csv = "123,Foo";
             var parser = new CsvParser(new StringReader(Csv), new(recordLength: 3, incompleteRecordHandling: IncompleteRecordHandling.TruncateRecord));
@@ -202,13 +239,16 @@ namespace FlexableCsvParser.Test
                 "Foo"
             };
 
-            Assert.IsTrue(parser.TryReadRecord(out string[] record));
-            CollectionAssert.AreEqual(expectedRecord, record);
-            Assert.IsFalse(parser.TryReadRecord(out _));
+            (bool success, ReadOnlyMemory<string> record) = await parser.ReadRecordAsync();
+            Assert.IsTrue(success);
+            CollectionAssert.AreEqual(expectedRecord, record.ToArray());
+
+            (success, _) = await parser.ReadRecordAsync();
+            Assert.IsFalse(success);
         }
 
         [TestMethod]
-        public void WhiteSpaceTrimmingDefault()
+        public async Task WhiteSpaceTrimmingDefault()
         {
             const string Csv = "123 , Foo ,\" Bar \"";
             var parser = new CsvParser(new StringReader(Csv));
@@ -220,13 +260,16 @@ namespace FlexableCsvParser.Test
                 " Bar "
             };
 
-            Assert.IsTrue(parser.TryReadRecord(out string[] record));
-            CollectionAssert.AreEqual(expectedRecord, record);
-            Assert.IsFalse(parser.TryReadRecord(out _));
+            (bool success, ReadOnlyMemory<string> record) = await parser.ReadRecordAsync();
+            Assert.IsTrue(success);
+            CollectionAssert.AreEqual(expectedRecord, record.ToArray());
+
+            (success, _) = await parser.ReadRecordAsync();
+            Assert.IsFalse(success);
         }
 
         [TestMethod]
-        public void WhiteSpaceTrimmingNone()
+        public async Task WhiteSpaceTrimmingNone()
         {
             const string Csv = "123 , Foo ,\" Bar \"";
             var parser = new CsvParser(new StringReader(Csv), new(whiteSpaceTrimming: WhiteSpaceTrimming.None));
@@ -238,13 +281,16 @@ namespace FlexableCsvParser.Test
                 " Bar "
             };
 
-            Assert.IsTrue(parser.TryReadRecord(out string[] record));
-            CollectionAssert.AreEqual(expectedRecord, record);
-            Assert.IsFalse(parser.TryReadRecord(out _));
+            (bool success, ReadOnlyMemory<string> record) = await parser.ReadRecordAsync();
+            Assert.IsTrue(success);
+            CollectionAssert.AreEqual(expectedRecord, record.ToArray());
+
+            (success, _) = await parser.ReadRecordAsync();
+            Assert.IsFalse(success);
         }
 
         [TestMethod]
-        public void WhiteSpaceTrimmingLeading()
+        public async Task WhiteSpaceTrimmingLeading()
         {
             const string Csv = "123 , Foo ,\" Bar \"";
             var parser = new CsvParser(new StringReader(Csv), new(whiteSpaceTrimming: WhiteSpaceTrimming.Leading));
@@ -256,13 +302,16 @@ namespace FlexableCsvParser.Test
                 "Bar "
             };
 
-            Assert.IsTrue(parser.TryReadRecord(out string[] record));
-            CollectionAssert.AreEqual(expectedRecord, record);
-            Assert.IsFalse(parser.TryReadRecord(out _));
+            (bool success, ReadOnlyMemory<string> record) = await parser.ReadRecordAsync();
+            Assert.IsTrue(success);
+            CollectionAssert.AreEqual(expectedRecord, record.ToArray());
+
+            (success, _) = await parser.ReadRecordAsync();
+            Assert.IsFalse(success);
         }
 
         [TestMethod]
-        public void WhiteSpaceTrimmingTrailing()
+        public async Task WhiteSpaceTrimmingTrailing()
         {
             const string Csv = "123 , Foo ,\" Bar \"";
             var parser = new CsvParser(new StringReader(Csv), new(whiteSpaceTrimming: WhiteSpaceTrimming.Trailing));
@@ -274,13 +323,16 @@ namespace FlexableCsvParser.Test
                 " Bar"
             };
 
-            Assert.IsTrue(parser.TryReadRecord(out string[] record));
-            CollectionAssert.AreEqual(expectedRecord, record);
-            Assert.IsFalse(parser.TryReadRecord(out _));
+            (bool success, ReadOnlyMemory<string> record) = await parser.ReadRecordAsync();
+            Assert.IsTrue(success);
+            CollectionAssert.AreEqual(expectedRecord, record.ToArray());
+
+            (success, _) = await parser.ReadRecordAsync();
+            Assert.IsFalse(success);
         }
 
         [TestMethod]
-        public void WhiteSpaceTrimmingBoth()
+        public async Task WhiteSpaceTrimmingBoth()
         {
             const string Csv = "123 , Foo ,\" Bar \"";
             var parser = new CsvParser(new StringReader(Csv), new(whiteSpaceTrimming: WhiteSpaceTrimming.Both));
@@ -292,9 +344,12 @@ namespace FlexableCsvParser.Test
                 "Bar"
             };
 
-            Assert.IsTrue(parser.TryReadRecord(out string[] record));
-            CollectionAssert.AreEqual(expectedRecord, record);
-            Assert.IsFalse(parser.TryReadRecord(out _));
+            (bool success, ReadOnlyMemory<string> record) = await parser.ReadRecordAsync();
+            Assert.IsTrue(success);
+            CollectionAssert.AreEqual(expectedRecord, record.ToArray());
+
+            (success, _) = await parser.ReadRecordAsync();
+            Assert.IsFalse(success);
         }
     }
 }

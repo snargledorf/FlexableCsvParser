@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading.Tasks;
 
 using FastState;
 
@@ -19,23 +20,20 @@ namespace FlexableCsvParser
 
         private StateMachine<ParserState, TokenType> parserStateMachine;
 
-        private readonly string quote;
-        private readonly string field;
-        private readonly string endOfRecord;
+        private readonly ReadOnlyMemory<char> quote;
 
-        private string[] currentRecord;
+        private Memory<string> currentRecord;
         private int currentFieldIndex;
 
         private int expectedRecordLength;
         private bool currentRecordInitialized;
         private int recordLength;
 
-        string leadingWhiteSpaceValue;
-        private string possibleTrailingWhiteSpaceValue;
+        private readonly MemoryStringBuilder leadingWhiteSpaceValue = new MemoryStringBuilder();
+        private readonly MemoryStringBuilder possibleTrailingWhiteSpaceValue = new MemoryStringBuilder();
         private readonly List<string> initialRecordBuilder = new List<string>();
-        private readonly StringBuilder fieldBuilder = new StringBuilder();
-
-        private Action incompleteRecordHandler;
+        
+        private readonly MemoryStringBuilder fieldBuilder = new MemoryStringBuilder();
 
         public CsvParser(TextReader reader)
             : this(reader, CsvParserConfig.Default)
@@ -63,21 +61,39 @@ namespace FlexableCsvParser
             expectedRecordLength = recordLength = currentRecord.Length;
             currentRecordInitialized = expectedRecordLength != 0;
 
-            quote = config.Delimiters.Quote;
-            field = config.Delimiters.Field;
-            endOfRecord = config.Delimiters.EndOfRecord;
-
-            incompleteRecordHandler = config.IncompleteRecordHandling switch
-            {
-                IncompleteRecordHandling.ThrowException => () => throw new InvalidDataException($"Record is incomplete: {string.Join(',', currentRecord.Take(currentFieldIndex))}"),
-                IncompleteRecordHandling.FillInWithEmpty => () => Array.Fill(currentRecord, string.Empty, currentFieldIndex, expectedRecordLength - currentFieldIndex),
-                IncompleteRecordHandling.FillInWithNull => () => Array.Fill(currentRecord, null, currentFieldIndex, expectedRecordLength - currentFieldIndex),
-                IncompleteRecordHandling.TruncateRecord => () => recordLength = currentFieldIndex,
-                _ => throw new InvalidOperationException($"Not a valid {nameof(IncompleteRecordHandling)}"),
-            };
+            quote = config.Delimiters.Quote.AsMemory();
         }
 
-        public bool Read()
+        public async IAsyncEnumerable<ReadOnlyMemory<string>> EnumerateRecords()
+        {
+            while (await ReadAsync().ConfigureAwait(false))
+                yield return currentRecord;
+        }
+
+        public async ValueTask<bool> ReadRecordAsync(Memory<string> record)
+        {
+            if (await ReadAsync().ConfigureAwait(false))
+            {
+                currentRecord[..recordLength].CopyTo(record);
+                return true;
+            }
+
+            return false;
+        }
+
+        public async ValueTask<(bool Success, ReadOnlyMemory<string> Record)> ReadRecordAsync()
+        {
+            if (await ReadAsync().ConfigureAwait(false))
+            {
+                Memory<string> record = new string[recordLength];
+                currentRecord[..recordLength].CopyTo(record);
+                return (true, record);
+            }
+
+            return (false, ReadOnlyMemory<string>.Empty);
+        }
+
+        private async ValueTask<bool> ReadAsync()
         {
             var state = ParserState.Start;
 
@@ -85,7 +101,7 @@ namespace FlexableCsvParser
 
             ParserState previousState;
 
-            Token token = tokenizer.NextToken(reader);
+            Token token = await tokenizer.NextTokenAsync(reader).ConfigureAwait(false);
             while (token.Type != TokenType.EndOfReader)
             {
                 previousState = state;
@@ -121,7 +137,7 @@ namespace FlexableCsvParser
                             // Only store the leading whitespace if there is a possiblity we might need it
                             // IE. If trim leading isn't enabled
                             if (!trimLeadingWhiteSpace)
-                                leadingWhiteSpaceValue = token.Value;
+                                leadingWhiteSpaceValue.Append(token.Value);
                             break;
 
                         case ParserState.QuotedFieldTrailingWhiteSpace:
@@ -130,7 +146,7 @@ namespace FlexableCsvParser
                             // This is so if we do end up with more field text, we can append the whitespace
                             // since that means it isn't trailing
                             if (trimTrailingWhiteSpace)
-                                possibleTrailingWhiteSpaceValue = token.Value;
+                                possibleTrailingWhiteSpaceValue.Append(token.Value);
                             else
                                 fieldBuilder.Append(token.Value);
                             break;
@@ -152,46 +168,27 @@ namespace FlexableCsvParser
                             fieldBuilder.Append(token.Value);
                             break;
 
-                        // I don't think this will ever be hit???
-                        case ParserState.EscapeAfterLeadingEscape:
+                        case ParserState.EscapeAfterLeadingEscape: // I don't think this will ever be hit???
                             fieldBuilder.Append(quote);
                             break;
 
                         default:
-                            throw new InvalidDataException($"Unexpected state: State = {state}, Token = {token}, Buffer = { fieldBuilder }");
+                            throw new InvalidDataException($"Unexpected state: State = {state}, Token = {token}, Buffer = {fieldBuilder}");
                     }
                 }
 
-                token = tokenizer.NextToken(reader);
+                token = await tokenizer.NextTokenAsync(reader).ConfigureAwait(false);
             }
 
             if (state == ParserState.Start)
                 return false;
-            
-            if (state == ParserState.QuotedFieldText || 
+
+            if (state == ParserState.QuotedFieldText ||
                 (parserStateMachine.TryGetDefaultForState(state, out ParserState defaultState) && defaultState == ParserState.QuotedFieldText))
                 throw new Exception($"Final quoted field did not have a closing quote: State = {state}, Buffer = {fieldBuilder}");
 
             CheckRecord();
             return true;
-        }
-
-        public string GetString(int fieldIndex)
-        {
-            return currentRecord[fieldIndex];
-        }
-
-        public bool TryReadRecord(out string[] record)
-        {
-            if (Read())
-            {
-                record = new string[recordLength];
-                Array.Copy(currentRecord, record, recordLength);
-                return true;
-            }
-
-            record = Array.Empty<string>();
-            return false;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -207,7 +204,26 @@ namespace FlexableCsvParser
             }
             else if (currentFieldIndex != expectedRecordLength)
             {
-                incompleteRecordHandler();
+                switch(config.IncompleteRecordHandling)
+                {
+                    case IncompleteRecordHandling.ThrowException:
+                        throw new InvalidDataException($"Record is incomplete: {string.Join(',', currentRecord[..currentFieldIndex].ToArray())}");
+
+                    case IncompleteRecordHandling.FillInWithEmpty:
+                        currentRecord[currentFieldIndex..].Span.Fill(string.Empty);
+                        break;
+
+                    case IncompleteRecordHandling.FillInWithNull:
+                        currentRecord[currentFieldIndex..].Span.Fill(null);
+                        break;
+
+                    case IncompleteRecordHandling.TruncateRecord:
+                        recordLength = currentFieldIndex;
+                        break;
+
+                    default:
+                        throw new InvalidOperationException($"Not a valid {nameof(IncompleteRecordHandling)}");
+                }
             }
             else if (config.IncompleteRecordHandling == IncompleteRecordHandling.TruncateRecord)
             {
@@ -230,14 +246,14 @@ namespace FlexableCsvParser
             }
             else
             {
-                currentRecord[currentFieldIndex++] = value;
+                currentRecord.Span[currentFieldIndex++] = value;
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void AppendLeadingWhiteSpace()
         {
-            if (leadingWhiteSpaceValue == null)
+            if (leadingWhiteSpaceValue.Length == 0)
                 return;
 
             fieldBuilder.Append(leadingWhiteSpaceValue);
@@ -247,13 +263,13 @@ namespace FlexableCsvParser
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ClearLeadingWhiteSpace()
         {
-            leadingWhiteSpaceValue = null;
+            leadingWhiteSpaceValue.Clear();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void AppendTrailingWhiteSpace()
         {
-            if (possibleTrailingWhiteSpaceValue == null)
+            if (possibleTrailingWhiteSpaceValue.Length == 0)
                 return;
 
             fieldBuilder.Append(possibleTrailingWhiteSpaceValue);
@@ -263,7 +279,7 @@ namespace FlexableCsvParser
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ClearTrailingWhiteSpace()
         {
-            possibleTrailingWhiteSpaceValue = null;
+            possibleTrailingWhiteSpaceValue.Clear();
         }
     }
 }

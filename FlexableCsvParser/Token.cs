@@ -4,7 +4,7 @@ namespace FlexableCsvParser
 {
     public struct Token
     {
-        public Token(TokenType type, int columnIndex, int lineIndex, string value)
+        public Token(TokenType type, int columnIndex, int lineIndex, ReadOnlyMemory<char> value)
         {
             Type = type;
             ColumnIndex = columnIndex;
@@ -15,7 +15,7 @@ namespace FlexableCsvParser
         public TokenType Type { get; }
         public int ColumnIndex { get; }
         public int LineIndex { get; }
-        public string Value { get; }
+        public ReadOnlyMemory<char> Value { get; }
 
         public static bool operator ==(Token left, Token right)
         {
@@ -33,7 +33,7 @@ namespace FlexableCsvParser
                    Type == token.Type &&
                    ColumnIndex == token.ColumnIndex &&
                    LineIndex == token.LineIndex &&
-                   Value == token.Value;
+                   Value.Span.SequenceEqual(token.Value.Span);
         }
 
         public override int GetHashCode()
@@ -44,7 +44,7 @@ namespace FlexableCsvParser
         public override string ToString()
         {
             string typeWithLocation = $"{Type}; Column: {ColumnIndex + 1}, Line: {LineIndex + 1}";
-            return string.IsNullOrEmpty(Value)
+            return Value.IsEmpty
                 ? typeWithLocation
                 : string.Join("; ", typeWithLocation, Value);
         }

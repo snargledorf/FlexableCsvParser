@@ -2,6 +2,7 @@
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading.Tasks;
 
 using FastState;
 
@@ -9,16 +10,9 @@ namespace FlexableCsvParser
 {
     public class FlexableTokenizer : Tokenizer
     {
-        private char[] readBuffer = new char[4096];
-
-        private int readBufferIndex;
-        private int readBufferLength;
-
-        private int tokenStartIndex;
-
         private int columnIndex, lineIndex;
 
-        private readonly StateMachine<int, char> stateMachine;
+        private readonly StateMachine<FlexableTokenizerTokenState, char> stateMachine;
 
         public FlexableTokenizer(Delimiters delimiters)
             : base(delimiters)
@@ -27,107 +21,81 @@ namespace FlexableCsvParser
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public override Token NextToken(TextReader reader)
+        public override async ValueTask<Token> NextTokenAsync(TextReader reader)
         {
-            int state = FlexableTokenizerTokenState.Start;
+            var state = FlexableTokenizerTokenState.Start;
 
             int startOfTokenColumnIndex = columnIndex;
             int startOfTokenLineIndex = lineIndex;
-            tokenStartIndex = readBufferIndex;
 
-            while (FillBuffer(reader))
+            while (true)
             {
-                do
+                if (EndOfBuffer)
                 {
-                    char c = readBuffer[readBufferIndex];
+                    await FillBufferAsync(reader).ConfigureAwait(false);
+                    if (EndOfBuffer)
+                        break;
+                }
 
-                    if (stateMachine.TryTransition(state, c, out int newState))
+                if (stateMachine.TryTransition(state, CurrentChar, out FlexableTokenizerTokenState newState))
+                {
+                    state = newState;
+                    switch (state)
                     {
-                        state = newState;
-                        switch (state)
-                        {
-                            case FlexableTokenizerTokenState.EndOfText:
-                                return CreateToken(TokenType.Text, startOfTokenColumnIndex, startOfTokenLineIndex, new ReadOnlySpan<char>(readBuffer, tokenStartIndex, readBufferIndex-tokenStartIndex));
+                        case FlexableTokenizerTokenState.EndOfText:
+                            return CreateToken(TokenType.Text, startOfTokenColumnIndex, startOfTokenLineIndex);
 
-                            case FlexableTokenizerTokenState.EndOfWhiteSpace:
-                                return CreateToken(TokenType.WhiteSpace, startOfTokenColumnIndex, startOfTokenLineIndex, new ReadOnlySpan<char>(readBuffer, tokenStartIndex, readBufferIndex - tokenStartIndex));
+                        case FlexableTokenizerTokenState.EndOfWhiteSpace:
+                            return CreateToken(TokenType.WhiteSpace, startOfTokenColumnIndex, startOfTokenLineIndex);
 
-                            case FlexableTokenizerTokenState.EndOfFieldDelimiter:
-                                return new Token(TokenType.FieldDelimiter, startOfTokenColumnIndex, startOfTokenLineIndex, FieldValue);
+                        case FlexableTokenizerTokenState.EndOfFieldDelimiter:
+                            return CreateToken(TokenType.FieldDelimiter, startOfTokenColumnIndex, startOfTokenLineIndex);
 
-                            case FlexableTokenizerTokenState.EndOfEndOfRecord:
-                                columnIndex = 0;
-                                lineIndex++;
-                                return new Token(TokenType.EndOfRecord, startOfTokenColumnIndex, startOfTokenLineIndex, EndOfRecordValue);
+                        case FlexableTokenizerTokenState.EndOfEndOfRecord:
+                            columnIndex = 0;
+                            lineIndex++;
+                            return CreateToken(TokenType.EndOfRecord, startOfTokenColumnIndex, startOfTokenLineIndex);
 
-                            case FlexableTokenizerTokenState.EndOfQuote:
-                                return new Token(TokenType.Quote, startOfTokenColumnIndex, startOfTokenLineIndex, QuoteValue);
+                        case FlexableTokenizerTokenState.EndOfQuote:
+                            return CreateToken(TokenType.Quote, startOfTokenColumnIndex, startOfTokenLineIndex);
 
-                            case FlexableTokenizerTokenState.EndOfEscape:
-                                return new Token(TokenType.Escape, startOfTokenColumnIndex, startOfTokenLineIndex, EscapeValue);
-                        }
+                        case FlexableTokenizerTokenState.EndOfEscape:
+                            return CreateToken(TokenType.Escape, startOfTokenColumnIndex, startOfTokenLineIndex);
                     }
+                }
 
-                    columnIndex++;
-                    readBufferIndex++;
-                } while (readBufferIndex < readBufferLength);
+                columnIndex++;
+                MoveToNextChar();
             }
 
 
-            if (state != FlexableTokenizerTokenState.Start && stateMachine.TryGetDefaultForState(state, out int defaultState))
+            if (state != FlexableTokenizerTokenState.Start && stateMachine.TryGetDefaultForState(state, out FlexableTokenizerTokenState defaultState))
                 state = defaultState;
 
             switch (state)
             {
                 case FlexableTokenizerTokenState.EndOfFieldDelimiter:
-                    return new Token(TokenType.FieldDelimiter, startOfTokenColumnIndex, lineIndex, FieldValue);
+                    return CreateToken(TokenType.FieldDelimiter, startOfTokenColumnIndex, lineIndex);
                 case FlexableTokenizerTokenState.EndOfEndOfRecord:
                     columnIndex = 0;
                     lineIndex++;
-                    return new Token(TokenType.EndOfRecord, startOfTokenColumnIndex, startOfTokenLineIndex, EndOfRecordValue);
+                    return CreateToken(TokenType.EndOfRecord, startOfTokenColumnIndex, startOfTokenLineIndex);
                 case FlexableTokenizerTokenState.EndOfQuote:
-                    return new Token(TokenType.Quote, startOfTokenColumnIndex, startOfTokenLineIndex, QuoteValue);
+                    return CreateToken(TokenType.Quote, startOfTokenColumnIndex, startOfTokenLineIndex);
                 case FlexableTokenizerTokenState.EndOfEscape:
-                    return new Token(TokenType.Escape, startOfTokenColumnIndex, startOfTokenLineIndex, EscapeValue);
+                    return CreateToken(TokenType.Escape, startOfTokenColumnIndex, startOfTokenLineIndex);
                 case FlexableTokenizerTokenState.Start:
-                    return new Token(TokenType.EndOfReader, startOfTokenColumnIndex, startOfTokenLineIndex, null);
+                    return CreateToken(TokenType.EndOfReader, startOfTokenColumnIndex, startOfTokenLineIndex);
                 default:
                     return CreateToken(
                         state == FlexableTokenizerTokenState.WhiteSpace ? TokenType.WhiteSpace : TokenType.Text,
                         startOfTokenColumnIndex,
-                        lineIndex,
-                        new ReadOnlySpan<char>(readBuffer, tokenStartIndex, readBufferIndex - tokenStartIndex));
+                        lineIndex);
             }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private bool FillBuffer(TextReader reader)
-        {
-            if (readBufferIndex < readBufferLength)
-                return true;
-
-            if (tokenStartIndex != 0)
-            {
-                Array.Copy(readBuffer, tokenStartIndex, readBuffer, 0, readBufferLength - tokenStartIndex);
-                readBufferIndex -= tokenStartIndex;
-                readBufferLength -= tokenStartIndex;
-                tokenStartIndex = 0;
-            }
-            else if (readBufferLength != 0)
-            {
-                Array.Resize(ref readBuffer, Math.Min(readBuffer.Length * 2, 0x7FFFFFC7));
-            }
-
-            readBufferIndex -= tokenStartIndex;
-            readBufferLength -= tokenStartIndex;
-            int charsToRead = readBuffer.Length - readBufferLength;
-            readBufferLength += reader.Read(readBuffer, readBufferLength, charsToRead);
-
-            return readBufferLength != readBufferIndex;
         }
     }
 
-    struct FlexableTokenizerTokenState
+    /*struct FlexableTokenizerTokenState
     {
         public const int Start = 0;
         public const int FieldDelimiter = Start + 1;
@@ -143,5 +111,23 @@ namespace FlexableCsvParser
         public const int Text = EndOfWhiteSpace + 1;
         public const int EndOfText = Text + 1;
         public const int StartOfAdditionalStates = EndOfText + 1;
+    }*/
+
+    enum FlexableTokenizerTokenState
+    {
+        Start = 0,
+        FieldDelimiter,
+        EndOfFieldDelimiter,
+        EndOfRecord,
+        EndOfEndOfRecord,
+        Quote,
+        EndOfQuote,
+        Escape,
+        EndOfEscape,
+        WhiteSpace,
+        EndOfWhiteSpace,
+        Text,
+        EndOfText,
+        StartOfAdditionalStates,
     }
 }

@@ -2,18 +2,12 @@
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace FlexableCsvParser
 {
     public class RFC4180Tokenizer : Tokenizer
     {
-        private char[] readBuffer = new char[4096];
-
-        private int readBufferIndex;
-        private int readBufferLength;
-
-        private int tokenStartIndex;
-
         private int columnIndex, lineIndex;
 
         public RFC4180Tokenizer()
@@ -22,139 +16,113 @@ namespace FlexableCsvParser
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public override Token NextToken(TextReader reader)
+        public override async ValueTask<Token> NextTokenAsync(TextReader reader)
         {
-            int state = TokenState.Start;
+            TokenState state = TokenState.Start;
 
             int startOfTokenColumnIndex = columnIndex;
             int startOfTokenLineIndex = lineIndex;
-            tokenStartIndex = readBufferIndex;
 
-            while (FillBuffer(reader))
+            while (true)
             {
-                do
+                if (EndOfBuffer)
                 {
-                    char c = readBuffer[readBufferIndex];
-
-                    switch (state)
-                    {
-                        case TokenState.Start:
-                            state = c switch
-                            {
-                                ',' => TokenState.EndOfFieldDelimiter,
-                                '\r' => TokenState.StartOfEndOfRecord,
-                                '\n' => TokenState.EndOfEndOfRecord,
-                                '"' => TokenState.StartOfEscape,
-                                _ => char.IsWhiteSpace(c) ? TokenState.WhiteSpace : TokenState.Text
-                            };
-                            break;
-
-                        case TokenState.WhiteSpace:
-                            if (!char.IsWhiteSpace(c) || c == '\r')
-                                return CreateToken(TokenType.WhiteSpace, startOfTokenColumnIndex, startOfTokenLineIndex, new ReadOnlySpan<char>(readBuffer, tokenStartIndex, readBufferIndex - tokenStartIndex));
-                            break;
-
-                        case TokenState.Text:
-                            if (c == ',' || c == '"' || char.IsWhiteSpace(c))
-                                return CreateToken(TokenType.Text, startOfTokenColumnIndex, startOfTokenLineIndex, new ReadOnlySpan<char>(readBuffer, tokenStartIndex, readBufferIndex - tokenStartIndex));
-                            break;
-
-                        case TokenState.StartOfEndOfRecord:
-                            if (c == '\n')
-                            {
-                                state = TokenState.EndOfEndOfRecord;
-                            }
-                            else
-                            {
-                                state = TokenState.WhiteSpace;
-                                goto case TokenState.WhiteSpace;
-                            }
-                            break;
-
-                        case TokenState.StartOfEscape:
-                            if (c == '"')
-                            {
-                                state = TokenState.EndOfEscape;
-                            }
-                            else
-                            {
-                                goto case TokenState.EndOfQuote;
-                            }
-                            break;
-
-                        case TokenState.EndOfFieldDelimiter:
-                            return new Token(TokenType.FieldDelimiter, startOfTokenColumnIndex, startOfTokenLineIndex, FieldValue);
-
-                        case TokenState.EndOfEndOfRecord:
-                            columnIndex = 0;
-                            lineIndex++;
-                            return new Token(TokenType.EndOfRecord, startOfTokenColumnIndex, startOfTokenLineIndex, EndOfRecordValue);
-
-                        case TokenState.EndOfQuote:
-                            return new Token(TokenType.Quote, startOfTokenColumnIndex, startOfTokenLineIndex, QuoteValue);
-
-                        case TokenState.EndOfEscape:
-                            return new Token(TokenType.Escape, startOfTokenColumnIndex, startOfTokenLineIndex, EscapeValue);
-                    }
-
-                    columnIndex++;
-                    readBufferIndex++;
+                    await FillBufferAsync(reader).ConfigureAwait(false);
+                    if (EndOfBuffer)
+                        break;
                 }
-                while (readBufferIndex < readBufferLength);
+
+                char c = CurrentChar;
+                switch (state)
+                {
+                    case TokenState.Start:
+                        state = c switch
+                        {
+                            ',' => TokenState.EndOfFieldDelimiter,
+                            '\r' => TokenState.StartOfEndOfRecord,
+                            '\n' => TokenState.EndOfEndOfRecord,
+                            '"' => TokenState.StartOfEscape,
+                            _ => char.IsWhiteSpace(c) ? TokenState.WhiteSpace : TokenState.Text
+                        };
+                        break;
+
+                    case TokenState.WhiteSpace:
+                        if (!char.IsWhiteSpace(c) || c == '\r')
+                            return CreateToken(TokenType.WhiteSpace, startOfTokenColumnIndex, startOfTokenLineIndex);
+                        break;
+
+                    case TokenState.Text:
+                        if (c == ',' || c == '"' || char.IsWhiteSpace(c))
+                            return CreateToken(TokenType.Text, startOfTokenColumnIndex, startOfTokenLineIndex);
+                        break;
+
+                    case TokenState.StartOfEndOfRecord:
+                        if (c == '\n')
+                        {
+                            state = TokenState.EndOfEndOfRecord;
+                        }
+                        else
+                        {
+                            state = TokenState.WhiteSpace;
+                            goto case TokenState.WhiteSpace;
+                        }
+                        break;
+
+                    case TokenState.StartOfEscape:
+                        if (c == '"')
+                        {
+                            state = TokenState.EndOfEscape;
+                        }
+                        else
+                        {
+                            goto case TokenState.EndOfQuote;
+                        }
+                        break;
+
+                    case TokenState.EndOfFieldDelimiter:
+                        return CreateToken(TokenType.FieldDelimiter, startOfTokenColumnIndex, startOfTokenLineIndex);
+
+                    case TokenState.EndOfEndOfRecord:
+                        columnIndex = 0;
+                        lineIndex++;
+                        return CreateToken(TokenType.EndOfRecord, startOfTokenColumnIndex, startOfTokenLineIndex);
+
+                    case TokenState.EndOfQuote:
+                        return CreateToken(TokenType.Quote, startOfTokenColumnIndex, startOfTokenLineIndex);
+
+                    case TokenState.EndOfEscape:
+                        return CreateToken(TokenType.Escape, startOfTokenColumnIndex, startOfTokenLineIndex);
+                }
+
+                columnIndex++;
+                MoveToNextChar();
             }
 
             switch (state)
             {
                 case TokenState.EndOfFieldDelimiter:
-                    return new Token(TokenType.FieldDelimiter, startOfTokenColumnIndex, startOfTokenLineIndex, FieldValue);
+                    return CreateToken(TokenType.FieldDelimiter, startOfTokenColumnIndex, startOfTokenLineIndex);
                 case TokenState.EndOfEndOfRecord:
                     columnIndex = 0;
                     lineIndex++;
-                    return new Token(TokenType.EndOfRecord, startOfTokenColumnIndex, startOfTokenLineIndex, EndOfRecordValue);
+                    return CreateToken(TokenType.EndOfRecord, startOfTokenColumnIndex, startOfTokenLineIndex);
                 case TokenState.EndOfQuote:
                 case TokenState.StartOfEscape:
-                    return new Token(TokenType.Quote, startOfTokenColumnIndex, startOfTokenLineIndex, QuoteValue);
+                    return CreateToken(TokenType.Quote, startOfTokenColumnIndex, startOfTokenLineIndex);
                 case TokenState.EndOfEscape:
-                    return new Token(TokenType.Escape, startOfTokenColumnIndex, startOfTokenLineIndex, EscapeValue);
+                    return CreateToken(TokenType.Escape, startOfTokenColumnIndex, startOfTokenLineIndex);
                 case TokenState.Start:
-                    return new Token(TokenType.EndOfReader, startOfTokenColumnIndex, startOfTokenLineIndex, null);
+                    return CreateToken(TokenType.EndOfReader, startOfTokenColumnIndex, startOfTokenLineIndex);
                 default:
                     return CreateToken(
                         state == TokenState.WhiteSpace ? TokenType.WhiteSpace : TokenType.Text,
                         startOfTokenColumnIndex,
-                        lineIndex,
-                        new ReadOnlySpan<char>(readBuffer, tokenStartIndex, readBufferIndex - tokenStartIndex));
+                        lineIndex);
             }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private bool FillBuffer(TextReader reader)
-        {
-            if (readBufferIndex < readBufferLength)
-                return true;
-                    
-            if (tokenStartIndex != 0)
-            {
-                Array.Copy(readBuffer, tokenStartIndex, readBuffer, 0, readBufferLength - tokenStartIndex);
-                readBufferIndex -= tokenStartIndex;
-                readBufferLength -= tokenStartIndex;
-                tokenStartIndex = 0;
-            }
-            else if (readBufferLength != 0)
-            {
-                Array.Resize(ref readBuffer, Math.Min(readBuffer.Length * 2, 0x7FFFFFC7));
-            }
-
-            readBufferIndex -= tokenStartIndex;
-            readBufferLength -= tokenStartIndex;
-            int charsToRead = readBuffer.Length - readBufferLength;
-            readBufferLength += reader.Read(readBuffer, readBufferLength, charsToRead);
-
-            return readBufferLength != readBufferIndex;
         }
     }
 
-    struct TokenState
+    /*struct TokenState
     {
         public const int Start = 0;
         public const int EndOfFieldDelimiter = Start + 1;
@@ -167,6 +135,20 @@ namespace FlexableCsvParser
         public const int EndOfWhiteSpace = WhiteSpace + 1;
         public const int Text = EndOfWhiteSpace + 1;
         public const int EndOfText = Text + 1;
+    }*/
 
+    enum TokenState
+    {
+        Start = 0,
+        EndOfFieldDelimiter,
+        StartOfEndOfRecord,
+        EndOfEndOfRecord,
+        EndOfQuote,
+        StartOfEscape,
+        EndOfEscape,
+        WhiteSpace,
+        EndOfWhiteSpace,
+        Text,
+        EndOfText,
     }
 }

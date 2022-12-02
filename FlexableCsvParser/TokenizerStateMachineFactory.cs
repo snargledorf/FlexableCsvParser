@@ -8,9 +8,9 @@ namespace FlexableCsvParser
 {
     internal static class TokenizerStateMachineFactory
     {
-        internal static StateMachine<int, char> CreateTokenizerStateMachine(Delimiters config)
+        internal static StateMachine<FlexableTokenizerTokenState, char> CreateTokenizerStateMachine(Delimiters config)
         {
-            Tree<int> tree = CreateDelimiterConfigTree(config);
+            Tree<FlexableTokenizerTokenState> tree = CreateDelimiterConfigTree(config);
 
             /* This is the Goal
              * 
@@ -35,7 +35,7 @@ namespace FlexableCsvParser
             builder.From(FlexableTokenizerTokenState.Text)
                 .When((c) => c == ',' || c == '"' || char.IsWhiteSpace(c), FlexableTokenizerTokenState.EndOfText);
             */
-            return new StateMachine<int, char>(builder =>
+            return new StateMachine<FlexableTokenizerTokenState, char>(builder =>
             {
                 BuildStartState(builder, tree);
                 BuildWhiteSpaceState(builder, tree);
@@ -57,11 +57,11 @@ namespace FlexableCsvParser
         //    .When('\n', FlexableTokenizerTokenState.EndOfEndOfRecord)
         //    .When('\r', FlexableTokenizerTokenState.EndOfWhiteSpace)
         //    .When((c) => char.IsWhiteSpace(c), FlexableTokenizerTokenState.WhiteSpace);
-        private static void BuildStartState(IStateMachineTransitionMapBuilder<int, char> builder, Tree<int> tree)
+        private static void BuildStartState(IStateMachineTransitionMapBuilder<FlexableTokenizerTokenState, char> builder, Tree<FlexableTokenizerTokenState> tree)
         {
-            IStateTransitionMapBuilder<int, char> startBuilder = builder.From(FlexableTokenizerTokenState.Start);
-            
-            int stateId = FlexableTokenizerTokenState.StartOfAdditionalStates;
+            IStateTransitionMapBuilder<FlexableTokenizerTokenState, char> startBuilder = builder.From(FlexableTokenizerTokenState.Start);
+
+            FlexableTokenizerTokenState stateId = FlexableTokenizerTokenState.StartOfAdditionalStates;
             foreach (var node in tree)
                 BuildTransitions(node, startBuilder, ref stateId);
 
@@ -74,7 +74,7 @@ namespace FlexableCsvParser
         // Builds this -
         // .When('\r', FlexableTokenizerTokenState.EndOfWhiteSpace)
         // .When(!char.IsWhiteSpace(c), FlexableTokenizerTokenState.EndOfWhiteSpace)
-        private static void BuildWhiteSpaceState(IStateMachineTransitionMapBuilder<int, char> builder, Tree<int> tree)
+        private static void BuildWhiteSpaceState(IStateMachineTransitionMapBuilder<FlexableTokenizerTokenState, char> builder, Tree<FlexableTokenizerTokenState> tree)
         {
             BuildTextOrWhiteSpaceState(builder, tree, true);
         }
@@ -83,7 +83,7 @@ namespace FlexableCsvParser
         // .When(',', FlexableTokenizerTokenState.EndOfText)
         // .When('"', FlexableTokenizerTokenState.EndOfText)
         // .When(char.IsWhiteSpace(c), FlexableTokenizerTokenState.EndOfText)
-        private static void BuildTextState(IStateMachineTransitionMapBuilder<int, char> builder, Tree<int> tree)
+        private static void BuildTextState(IStateMachineTransitionMapBuilder<FlexableTokenizerTokenState, char> builder, Tree<FlexableTokenizerTokenState> tree)
         {
             BuildTextOrWhiteSpaceState(builder, tree, false);
         }
@@ -96,12 +96,12 @@ namespace FlexableCsvParser
         // Or this -
         // .When('\r', FlexableTokenizerTokenState.EndOfText)
         // .When(!char.IsWhiteSpace(c), FlexableTokenizerTokenState.EndOfWhiteSpace)
-        private static void BuildTextOrWhiteSpaceState(IStateMachineTransitionMapBuilder<int, char> builder, Tree<int> tree, bool whiteSpace)
+        private static void BuildTextOrWhiteSpaceState(IStateMachineTransitionMapBuilder<FlexableTokenizerTokenState, char> builder, Tree<FlexableTokenizerTokenState> tree, bool whiteSpace)
         {
             var currentState = whiteSpace ? FlexableTokenizerTokenState.WhiteSpace : FlexableTokenizerTokenState.Text;
             var nextState = whiteSpace ? FlexableTokenizerTokenState.EndOfWhiteSpace : FlexableTokenizerTokenState.EndOfText;
 
-            IStateTransitionMapBuilder<int, char> textBuilder = builder.From(currentState);
+            IStateTransitionMapBuilder<FlexableTokenizerTokenState, char> textBuilder = builder.From(currentState);
 
             foreach (var node in tree)
             {
@@ -126,7 +126,7 @@ namespace FlexableCsvParser
             }
         }
 
-        private static void BuildTransitions(TreeNode<int> node, IStateTransitionMapBuilder<int, char> currentMapBuilder, ref int stateId)
+        private static void BuildTransitions(TreeNode<FlexableTokenizerTokenState> node, IStateTransitionMapBuilder<FlexableTokenizerTokenState, char> currentMapBuilder, ref FlexableTokenizerTokenState stateId)
         {
             // If this node has a value then it should be treated as a final node
             // This breaks instances where a control string may be the start of another control string
@@ -191,7 +191,7 @@ namespace FlexableCsvParser
                     // If this whole branch is whitespace then add checks for WhiteSpace situations
                     if (node.BranchIsWhiteSpace)
                     {
-                        TreeNode<int> rootNode = node.Root;
+                        TreeNode<FlexableTokenizerTokenState> rootNode = node.Root;
 
                         // We might be starting another one of these branches \r\r\n = \r {whitespace} \r\n {record}
                         currentMapBuilder.When(rootNode.Key, FlexableTokenizerTokenState.EndOfWhiteSpace);
@@ -216,20 +216,20 @@ namespace FlexableCsvParser
             }
         }
 
-        private static Tree<int> CreateDelimiterConfigTree(Delimiters config)
+        private static Tree<FlexableTokenizerTokenState> CreateDelimiterConfigTree(Delimiters config)
         {
-            var delimitersToStates = new List<KeyValuePair<string, int>>
+            var delimitersToStates = new List<KeyValuePair<string, FlexableTokenizerTokenState>>
             {
-                new KeyValuePair<string, int>(config.Field, FlexableTokenizerTokenState.EndOfFieldDelimiter),
-                new KeyValuePair<string, int>(config.EndOfRecord, FlexableTokenizerTokenState.EndOfEndOfRecord),
+                new KeyValuePair<string, FlexableTokenizerTokenState>(config.Field, FlexableTokenizerTokenState.EndOfFieldDelimiter),
+                new KeyValuePair<string, FlexableTokenizerTokenState>(config.EndOfRecord, FlexableTokenizerTokenState.EndOfEndOfRecord),
             };
 
             if (!string.IsNullOrEmpty(config.Quote))
-                delimitersToStates.Add(new KeyValuePair<string, int>(config.Quote, FlexableTokenizerTokenState.EndOfQuote));
+                delimitersToStates.Add(new KeyValuePair<string, FlexableTokenizerTokenState>(config.Quote, FlexableTokenizerTokenState.EndOfQuote));
             if (!string.IsNullOrEmpty(config.Escape))
-                delimitersToStates.Add(new KeyValuePair<string, int>(config.Escape, FlexableTokenizerTokenState.EndOfEscape));
+                delimitersToStates.Add(new KeyValuePair<string, FlexableTokenizerTokenState>(config.Escape, FlexableTokenizerTokenState.EndOfEscape));
 
-            return new Tree<int>(delimitersToStates.ToArray());
+            return new Tree<FlexableTokenizerTokenState>(delimitersToStates.ToArray());
         }
     }
 }
