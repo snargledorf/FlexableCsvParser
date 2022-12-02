@@ -20,7 +20,7 @@ namespace FlexableCsvParser
 
         private StateMachine<ParserState, TokenType> parserStateMachine;
 
-        private readonly ReadOnlyMemory<char> quote;
+        private readonly string quote;
 
         private Memory<string> currentRecord;
         private int currentFieldIndex;
@@ -61,7 +61,7 @@ namespace FlexableCsvParser
             expectedRecordLength = recordLength = currentRecord.Length;
             currentRecordInitialized = expectedRecordLength != 0;
 
-            quote = config.Delimiters.Quote.AsMemory();
+            quote = config.Delimiters.Quote;
         }
 
         public async IAsyncEnumerable<ReadOnlyMemory<string>> EnumerateRecords()
@@ -101,84 +101,84 @@ namespace FlexableCsvParser
 
             ParserState previousState;
 
-            Token token = await tokenizer.NextTokenAsync(reader).ConfigureAwait(false);
-            while (token.Type != TokenType.EndOfReader)
+            do
             {
-                previousState = state;
-                if (parserStateMachine.TryTransition(state, token.Type, out ParserState newState))
+                while (tokenizer.TryGetNextToken(out Token token))
                 {
-                    state = newState;
-                    switch (state)
+                    previousState = state;
+                    if (parserStateMachine.TryTransition(state, token.Type, out ParserState newState))
                     {
-                        case ParserState.UnquotedFieldText:
-                        case ParserState.QuotedFieldText:
-                            AppendLeadingWhiteSpace();
-                            AppendTrailingWhiteSpace();
-                            fieldBuilder.Append(token.Value);
-                            break;
+                        state = newState;
+                        switch (state)
+                        {
+                            case ParserState.UnquotedFieldText:
+                            case ParserState.QuotedFieldText:
+                                AppendLeadingWhiteSpace();
+                                AppendTrailingWhiteSpace();
+                                fieldBuilder.Append(token.Value.Span);
+                                break;
 
-                        case ParserState.EndOfField:
-                            AddCurrentField();
-                            break;
+                            case ParserState.EndOfField:
+                                AddCurrentField();
+                                break;
 
-                        case ParserState.EndOfRecord:
-                            CheckRecord();
-                            return true;
+                            case ParserState.EndOfRecord:
+                                CheckRecord();
+                                return true;
 
-                        case ParserState.EscapeAfterLeadingEscape:
-                        case ParserState.QuotedFieldEscape:
-                            AppendLeadingWhiteSpace();
-                            AppendTrailingWhiteSpace();
-                            fieldBuilder.Append(quote);
-                            break;
+                            case ParserState.EscapeAfterLeadingEscape:
+                            case ParserState.QuotedFieldEscape:
+                                AppendLeadingWhiteSpace();
+                                AppendTrailingWhiteSpace();
+                                fieldBuilder.Append(quote.AsSpan());
+                                break;
 
-                        case ParserState.QuotedFieldLeadingWhiteSpace:
-                        case ParserState.LeadingWhiteSpace:
-                            // Only store the leading whitespace if there is a possiblity we might need it
-                            // IE. If trim leading isn't enabled
-                            if (!trimLeadingWhiteSpace)
-                                leadingWhiteSpaceValue.Append(token.Value);
-                            break;
+                            case ParserState.QuotedFieldLeadingWhiteSpace:
+                            case ParserState.LeadingWhiteSpace:
+                                // Only store the leading whitespace if there is a possiblity we might need it
+                                // IE. If trim leading isn't enabled
+                                if (!trimLeadingWhiteSpace)
+                                    leadingWhiteSpaceValue.Append(token.Value.Span);
+                                break;
 
-                        case ParserState.QuotedFieldTrailingWhiteSpace:
-                        case ParserState.UnquotedFieldTrailingWhiteSpace:
-                            // Only store the trailing whitespace if trailing whitespace trimming is enabled
-                            // This is so if we do end up with more field text, we can append the whitespace
-                            // since that means it isn't trailing
-                            if (trimTrailingWhiteSpace)
-                                possibleTrailingWhiteSpaceValue.Append(token.Value);
-                            else
-                                fieldBuilder.Append(token.Value);
-                            break;
+                            case ParserState.QuotedFieldTrailingWhiteSpace:
+                            case ParserState.UnquotedFieldTrailingWhiteSpace:
+                                // Only store the trailing whitespace if trailing whitespace trimming is enabled
+                                // This is so if we do end up with more field text, we can append the whitespace
+                                // since that means it isn't trailing
+                                if (trimTrailingWhiteSpace)
+                                    possibleTrailingWhiteSpaceValue.Append(token.Value.Span);
+                                else
+                                    fieldBuilder.Append(token.Value.Span);
+                                break;
 
-                        case ParserState.UnexpectedToken:
-                            throw new InvalidDataException($"Unexpected token: State = {previousState}, Token = {token}, Buffer = {fieldBuilder}");
+                            case ParserState.UnexpectedToken:
+                                throw new InvalidDataException($"Unexpected token: State = {previousState}, Token = {token}, Buffer = {fieldBuilder}");
 
-                        default:
-                            ClearLeadingWhiteSpace();
-                            break;
+                            default:
+                                ClearLeadingWhiteSpace();
+                                break;
+                        }
+                    }
+                    else
+                    {
+                        switch (state)
+                        {
+                            case ParserState.QuotedFieldText:
+                            case ParserState.UnquotedFieldText:
+                                fieldBuilder.Append(token.Value.Span);
+                                break;
+
+                            case ParserState.EscapeAfterLeadingEscape: // I don't think this will ever be hit???
+                                fieldBuilder.Append(quote.AsSpan());
+                                break;
+
+                            default:
+                                throw new InvalidDataException($"Unexpected state: State = {state}, Token = {token}, Buffer = {fieldBuilder}");
+                        }
                     }
                 }
-                else
-                {
-                    switch (state)
-                    {
-                        case ParserState.QuotedFieldText:
-                        case ParserState.UnquotedFieldText:
-                            fieldBuilder.Append(token.Value);
-                            break;
-
-                        case ParserState.EscapeAfterLeadingEscape: // I don't think this will ever be hit???
-                            fieldBuilder.Append(quote);
-                            break;
-
-                        default:
-                            throw new InvalidDataException($"Unexpected state: State = {state}, Token = {token}, Buffer = {fieldBuilder}");
-                    }
-                }
-
-                token = await tokenizer.NextTokenAsync(reader).ConfigureAwait(false);
-            }
+            } while (await tokenizer.ReadAsync(reader).ConfigureAwait(false));
 
             if (state == ParserState.Start)
                 return false;

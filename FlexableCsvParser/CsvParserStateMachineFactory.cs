@@ -31,7 +31,7 @@ namespace FlexableCsvParser
                 .When(TokenType.WhiteSpace, ParserState.LeadingWhiteSpace)
                 .When(TokenType.FieldDelimiter, ParserState.EndOfField)
                 .When(TokenType.EndOfRecord, ParserState.EndOfRecord)
-                .When(TokenType.EndOfReader, ParserState.EndOfReader)
+                //.When(TokenType.EndOfReader, ParserState.EndOfReader)
                 .When(TokenType.Escape, ParserState.LeadingEscape);
         }
 

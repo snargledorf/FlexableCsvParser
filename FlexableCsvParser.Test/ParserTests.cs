@@ -16,6 +16,7 @@ namespace FlexableCsvParser.Test
             const string Csv = """"
                 123, "456 ,""789""" ,ABC
                 """";
+
             var parser = new CsvParser(new StringReader(Csv));
 
             var expectedRecord = new[]
@@ -27,7 +28,7 @@ namespace FlexableCsvParser.Test
                 "ABC"
             };
 
-            (bool success, ReadOnlyMemory<string> record) = await parser.ReadRecordAsync();
+            (bool success, ReadOnlyMemory<string> record) = await parser.ReadRecordAsync().ConfigureAwait(false);
             Assert.IsTrue(success);
             CollectionAssert.AreEqual(expectedRecord.ToArray(), record.ToArray());
 

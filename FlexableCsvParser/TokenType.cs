@@ -2,7 +2,7 @@
 {
     public enum TokenType
     {
-        EndOfReader,
+        //EndOfReader,
         FieldDelimiter,
         EndOfRecord,
         Quote,

@@ -7,7 +7,7 @@ namespace FlexableCsvParser
     public interface ITokenizer
     {
         IAsyncEnumerable<Token> EnumerateTokensAsync(TextReader reader);
-
-        ValueTask<Token> NextTokenAsync(TextReader reader);
+        bool TryGetNextToken(out Token token);
+        ValueTask<bool> ReadAsync(TextReader reader);
     }
 }

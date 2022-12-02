@@ -31,7 +31,7 @@ namespace FlexableCsvParser.Test
                 new Token(TokenType.WhiteSpace, 18, 0, " ".AsMemory()),
                 new Token(TokenType.FieldDelimiter, 19, 0, Delimiters.RFC4180.Field.AsMemory()),
                 new Token(TokenType.Text, 20, 0, "ABC".AsMemory()),
-                new Token(TokenType.EndOfReader, 23, 0, null),
+                //new Token(TokenType.EndOfReader, 23, 0, null),
             };
 
             Token[] tokens = await tokenizer.EnumerateTokensAsync(new StringReader(Csv)).Select(CloneToken).ToArrayAsync();
@@ -61,7 +61,7 @@ namespace FlexableCsvParser.Test
                 new Token(TokenType.Quote, 20, 0, Delimiters.RFC4180.Quote.AsMemory()),
                 new Token(TokenType.Text, 21, 0, "ABC".AsMemory()),
                 new Token(TokenType.Quote, 24, 0, Delimiters.RFC4180.Quote.AsMemory()),
-                new Token(TokenType.EndOfReader, 25, 0, null),
+                //new Token(TokenType.EndOfReader, 25, 0, null),
             };
 
             Token[] tokens = await tokenizer.EnumerateTokensAsync(new StringReader(Csv)).Select(CloneToken).ToArrayAsync();
@@ -89,7 +89,7 @@ namespace FlexableCsvParser.Test
                 new Token(TokenType.WhiteSpace, 18, 0, " ".AsMemory()),
                 new Token(TokenType.FieldDelimiter, 19, 0, Delimiters.RFC4180.Field.AsMemory()),
                 new Token(TokenType.Text, 20, 0, "ABC".AsMemory()),
-                new Token(TokenType.EndOfReader, 23, 0, null),
+                //new Token(TokenType.EndOfReader, 23, 0, null),
             };
 
             Token[] tokens = await tokenizer.EnumerateTokensAsync(new StringReader(Csv)).Select(CloneToken).ToArrayAsync();
@@ -119,7 +119,7 @@ namespace FlexableCsvParser.Test
                 new Token(TokenType.Quote, 20, 0, Delimiters.RFC4180.Quote.AsMemory()),
                 new Token(TokenType.Text, 21, 0, "ABC".AsMemory()),
                 new Token(TokenType.Quote, 24, 0, Delimiters.RFC4180.Quote.AsMemory()),
-                new Token(TokenType.EndOfReader, 25, 0, null),
+                //new Token(TokenType.EndOfReader, 25, 0, null),
             };
 
             Token[] tokens = await tokenizer.EnumerateTokensAsync(new StringReader(Csv)).Select(CloneToken).ToArrayAsync();
@@ -146,7 +146,7 @@ namespace FlexableCsvParser.Test
                 new Token(TokenType.FieldDelimiter, 29, 0, "<Foo".AsMemory()),
                 new Token(TokenType.Text, 33, 0, "ABC".AsMemory()),
                 new Token(TokenType.EndOfRecord, 36, 0, "<FooBar".AsMemory()),
-                new Token(TokenType.EndOfReader, 0, 1, null),
+                //new Token(TokenType.EndOfReader, 0, 1, null),
             };
 
             Token[] tokens = await tokenizer.EnumerateTokensAsync(new StringReader(Csv)).Select(CloneToken).ToArrayAsync();
@@ -175,7 +175,7 @@ namespace FlexableCsvParser.Test
                 new Token(TokenType.FieldDelimiter, 19, 0, Delimiters.RFC4180.Field.AsMemory()),
                 new Token(TokenType.Text, 20, 0, "ABC".AsMemory()),
                 new Token(TokenType.EndOfRecord, 23, 0, Delimiters.RFC4180.EndOfRecord.AsMemory()),
-                new Token(TokenType.EndOfReader, 0, 1, null),
+                //new Token(TokenType.EndOfReader, 0, 1, null),
             };
 
             Token[] tokens = await tokenizer.EnumerateTokensAsync(new StringReader(Csv)).Select(CloneToken).ToArrayAsync();
@@ -204,7 +204,7 @@ namespace FlexableCsvParser.Test
                 new Token(TokenType.FieldDelimiter, 19, 0, Delimiters.RFC4180.Field.AsMemory()),
                 new Token(TokenType.Text, 20, 0, "ABC".AsMemory()),
                 new Token(TokenType.EndOfRecord, 23, 0, Delimiters.RFC4180.EndOfRecord.AsMemory()),
-                new Token(TokenType.EndOfReader, 0, 1, null),
+                //new Token(TokenType.EndOfReader, 0, 1, null),
             };
 
             Token[] tokens = await tokenizer.EnumerateTokensAsync(new StringReader(Csv)).Select(CloneToken).ToArrayAsync();
@@ -249,7 +249,7 @@ namespace FlexableCsvParser.Test
                 new Token(TokenType.WhiteSpace, 18, 0, " ".AsMemory()),
                 new Token(TokenType.FieldDelimiter, 19, 0, Delimiters.RFC4180.Field.AsMemory()),
                 new Token(TokenType.Text, 20, 0, "\"ABC\"".AsMemory()),
-                new Token(TokenType.EndOfReader, 25, 0, null),
+                //new Token(TokenType.EndOfReader, 25, 0, null),
             };
 
             Token[] tokens = await tokenizer.EnumerateTokensAsync(new StringReader(Csv)).Select(CloneToken).ToArrayAsync();
@@ -281,7 +281,7 @@ namespace FlexableCsvParser.Test
                 new Token(TokenType.Quote, 20, 0, Delimiters.RFC4180.Quote.AsMemory()),
                 new Token(TokenType.Text, 21, 0, "ABC".AsMemory()),
                 new Token(TokenType.Quote, 24, 0, Delimiters.RFC4180.Quote.AsMemory()),
-                new Token(TokenType.EndOfReader, 25, 0, null),
+                //new Token(TokenType.EndOfReader, 25, 0, null),
             };
 
             Token[] tokens = await tokenizer.EnumerateTokensAsync(new StringReader(Csv)).Select(CloneToken).ToArrayAsync();

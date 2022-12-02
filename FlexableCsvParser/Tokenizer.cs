@@ -10,8 +10,8 @@ namespace FlexableCsvParser
 {
     public abstract class Tokenizer : ITokenizer
     {
-        public static readonly Tokenizer RFC4180 = new RFC4180Tokenizer();
-        public static readonly Tokenizer Default = RFC4180;
+        public static Tokenizer CreateRFC4180Tokenizer() => new RFC4180Tokenizer();
+        public static Tokenizer CreateDefaultTokenizer() => CreateRFC4180Tokenizer();
 
         protected readonly ReadOnlyMemory<char> FieldValue;
         protected readonly ReadOnlyMemory<char> EndOfRecordValue;
@@ -22,8 +22,6 @@ namespace FlexableCsvParser
 
         private int readBufferIndex;
         private int readBufferLength;
-
-        private int tokenStartIndex;
 
         protected Tokenizer(Delimiters delimiters)
         {
@@ -40,54 +38,64 @@ namespace FlexableCsvParser
         public static Tokenizer For(Delimiters delimiters)
         {
             if (delimiters.IsRFC4180Compliant)
-                return RFC4180;
+                return CreateRFC4180Tokenizer();
 
             return new FlexableTokenizer(delimiters);
         }
 
         public virtual async IAsyncEnumerable<Token> EnumerateTokensAsync(TextReader reader)
         {
-            Token token;
-            while ((token = await NextTokenAsync(reader)).Type != TokenType.EndOfReader)
-                yield return token;
-
-            yield return token;
+            while (await ReadAsync(reader).ConfigureAwait(false))
+            {
+                while (TryGetNextToken(out Token token))
+                {
+                    yield return token;
+                }
+            }
         }
 
-        public abstract ValueTask<Token> NextTokenAsync(TextReader reader);
-
-        protected Token CreateToken(in TokenType type, in int columnIndex, in int lineIndex)
+        public async ValueTask<bool> ReadAsync(TextReader reader)
         {
-            ReadOnlyMemory<char> value = readBuffer[tokenStartIndex..readBufferIndex];
+            if (!EndOfReader)
+                return await FillBufferAsync(reader).ConfigureAwait(false);
 
-            tokenStartIndex = readBufferIndex;
-
-            return new Token(type, columnIndex, lineIndex, value);
+            return readBufferIndex != readBufferLength;
         }
 
-        public bool EndOfBuffer => readBufferIndex == readBufferLength;
-
-        protected char CurrentChar => readBuffer.Span[readBufferIndex];
-
-        protected void MoveToNextChar()
+        public bool TryGetNextToken(out Token token)
         {
-            readBufferIndex++;
+            if (TryParseToken(readBuffer[readBufferIndex..readBufferLength].Span, out TokenType type, out int columnIndex, out int lineIndex, out int charCount))
+            {
+                ReadOnlyMemory<char> value = readBuffer[readBufferIndex..readBufferLength][..charCount];
+                token = new Token(type, columnIndex, lineIndex, value);
+
+                readBufferIndex += charCount;
+                return true;
+            }
+
+            token = default;
+            return false;
         }
 
-        protected async ValueTask FillBufferAsync(TextReader reader)
+        protected abstract bool TryParseToken(in ReadOnlySpan<char> buffer, out TokenType type, out int columnIndex, out int lineIndex, out int charCount);
+
+        public bool EndOfReader { get; private set; }
+
+        private async ValueTask<bool> FillBufferAsync(TextReader reader)
         {
-            if (tokenStartIndex != 0)
+            if (EndOfReader)
+                return false;
+
+            if (readBufferIndex != 0)
             {
                 // Move the start of the current token to the start of the buffer
-                readBuffer[tokenStartIndex..].CopyTo(readBuffer);
-
-                // Shift the current read index
-                readBufferIndex -= tokenStartIndex;
+                readBuffer[readBufferIndex..].CopyTo(readBuffer);
 
                 // Adjust the current buffer length
-                readBufferLength -= tokenStartIndex;
+                readBufferLength -= readBufferIndex;
 
-                tokenStartIndex = 0;
+                // Shift the current read index
+                readBufferIndex = 0;
             }
             else if (readBufferLength != 0)
             {
@@ -100,7 +108,14 @@ namespace FlexableCsvParser
                 oldBuffer.CopyTo(readBuffer);
             }
 
-            readBufferLength += await reader.ReadAsync(readBuffer[readBufferLength..]).ConfigureAwait(false);
+            Memory<char> buffer = readBuffer[readBufferLength..];
+            int charsRead = await reader.ReadAsync(buffer).ConfigureAwait(false);
+
+            readBufferLength += charsRead;
+
+            EndOfReader = charsRead < buffer.Length && reader.Peek() == -1;
+
+            return readBufferIndex != readBufferLength;
         }
     }
 }

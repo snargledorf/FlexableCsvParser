@@ -20,98 +20,93 @@ namespace FlexableCsvParser
             stateMachine = TokenizerStateMachineFactory.CreateTokenizerStateMachine(delimiters);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public override async ValueTask<Token> NextTokenAsync(TextReader reader)
+        protected override bool TryParseToken(in ReadOnlySpan<char> buffer, out TokenType type, out int startOfTokenColumnIndex, out int startOfTokenLineIndex, out int charCount)
         {
             var state = FlexableTokenizerTokenState.Start;
 
-            int startOfTokenColumnIndex = columnIndex;
-            int startOfTokenLineIndex = lineIndex;
+            startOfTokenColumnIndex = columnIndex;
+            startOfTokenLineIndex = lineIndex;
+            charCount = 0;
 
-            while (true)
+            foreach (char c in buffer)
             {
-                if (EndOfBuffer)
-                {
-                    await FillBufferAsync(reader).ConfigureAwait(false);
-                    if (EndOfBuffer)
-                        break;
-                }
-
-                if (stateMachine.TryTransition(state, CurrentChar, out FlexableTokenizerTokenState newState))
+                if (stateMachine.TryTransition(state, c, out FlexableTokenizerTokenState newState))
                 {
                     state = newState;
                     switch (state)
                     {
                         case FlexableTokenizerTokenState.EndOfText:
-                            return CreateToken(TokenType.Text, startOfTokenColumnIndex, startOfTokenLineIndex);
+                            type = TokenType.Text;
+                            return true;
 
                         case FlexableTokenizerTokenState.EndOfWhiteSpace:
-                            return CreateToken(TokenType.WhiteSpace, startOfTokenColumnIndex, startOfTokenLineIndex);
+                            type = TokenType.WhiteSpace;
+                            return true;
 
                         case FlexableTokenizerTokenState.EndOfFieldDelimiter:
-                            return CreateToken(TokenType.FieldDelimiter, startOfTokenColumnIndex, startOfTokenLineIndex);
+                            type = TokenType.FieldDelimiter;
+                            return true;
 
                         case FlexableTokenizerTokenState.EndOfEndOfRecord:
-                            columnIndex = 0;
-                            lineIndex++;
-                            return CreateToken(TokenType.EndOfRecord, startOfTokenColumnIndex, startOfTokenLineIndex);
+                            type = TokenType.EndOfRecord;
+                            return true;
 
                         case FlexableTokenizerTokenState.EndOfQuote:
-                            return CreateToken(TokenType.Quote, startOfTokenColumnIndex, startOfTokenLineIndex);
+                            type = TokenType.Quote;
+                            return true;
 
                         case FlexableTokenizerTokenState.EndOfEscape:
-                            return CreateToken(TokenType.Escape, startOfTokenColumnIndex, startOfTokenLineIndex);
+                            type = TokenType.Escape;
+                            return true;
                     }
                 }
 
-                columnIndex++;
-                MoveToNextChar();
-            }
-
-
-            if (state != FlexableTokenizerTokenState.Start && stateMachine.TryGetDefaultForState(state, out FlexableTokenizerTokenState defaultState))
-                state = defaultState;
-
-            switch (state)
-            {
-                case FlexableTokenizerTokenState.EndOfFieldDelimiter:
-                    return CreateToken(TokenType.FieldDelimiter, startOfTokenColumnIndex, lineIndex);
-                case FlexableTokenizerTokenState.EndOfEndOfRecord:
-                    columnIndex = 0;
+                if (c == '\n')
+                {
                     lineIndex++;
-                    return CreateToken(TokenType.EndOfRecord, startOfTokenColumnIndex, startOfTokenLineIndex);
-                case FlexableTokenizerTokenState.EndOfQuote:
-                    return CreateToken(TokenType.Quote, startOfTokenColumnIndex, startOfTokenLineIndex);
-                case FlexableTokenizerTokenState.EndOfEscape:
-                    return CreateToken(TokenType.Escape, startOfTokenColumnIndex, startOfTokenLineIndex);
-                case FlexableTokenizerTokenState.Start:
-                    return CreateToken(TokenType.EndOfReader, startOfTokenColumnIndex, startOfTokenLineIndex);
-                default:
-                    return CreateToken(
-                        state == FlexableTokenizerTokenState.WhiteSpace ? TokenType.WhiteSpace : TokenType.Text,
-                        startOfTokenColumnIndex,
-                        lineIndex);
+                    columnIndex = 0;
+                }
+                else
+                    columnIndex++;
+
+                charCount++;
             }
+
+            if (EndOfReader)
+            {
+                if (state != FlexableTokenizerTokenState.Start && stateMachine.TryGetDefaultForState(state, out FlexableTokenizerTokenState defaultState))
+                    state = defaultState;
+
+                switch (state)
+                {
+                    case FlexableTokenizerTokenState.EndOfFieldDelimiter:
+                        type = TokenType.FieldDelimiter;
+                        return true;
+                    case FlexableTokenizerTokenState.EndOfEndOfRecord:
+                        type = TokenType.EndOfRecord;
+                        return true;
+                    case FlexableTokenizerTokenState.EndOfQuote:
+                        type = TokenType.Quote;
+                        return true;
+                    case FlexableTokenizerTokenState.EndOfEscape:
+                        type = TokenType.Escape;
+                        return true;
+                    //case FlexableTokenizerTokenState.Start:
+                    //    token = CreateToken(TokenType.EndOfReader, startOfTokenColumnIndex, startOfTokenLineIndex);
+                    //    return true;
+                    case FlexableTokenizerTokenState.WhiteSpace:
+                        type = TokenType.WhiteSpace;
+                        return true;
+                    case FlexableTokenizerTokenState.Text:
+                        type = TokenType.Text;
+                        return true;
+                }
+            }
+
+            type = default;
+            return false;
         }
     }
-
-    /*struct FlexableTokenizerTokenState
-    {
-        public const int Start = 0;
-        public const int FieldDelimiter = Start + 1;
-        public const int EndOfFieldDelimiter = FieldDelimiter + 1;
-        public const int EndOfRecord = EndOfFieldDelimiter + 1;
-        public const int EndOfEndOfRecord = EndOfRecord + 1;
-        public const int Quote = EndOfEndOfRecord + 1;
-        public const int EndOfQuote = Quote + 1;
-        public const int Escape = EndOfQuote + 1;
-        public const int EndOfEscape = Escape + 1;
-        public const int WhiteSpace = EndOfEscape + 1;
-        public const int EndOfWhiteSpace = WhiteSpace + 1;
-        public const int Text = EndOfWhiteSpace + 1;
-        public const int EndOfText = Text + 1;
-        public const int StartOfAdditionalStates = EndOfText + 1;
-    }*/
 
     enum FlexableTokenizerTokenState
     {

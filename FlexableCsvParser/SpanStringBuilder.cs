@@ -13,19 +13,19 @@ namespace FlexableCsvParser
         {
         }
 
-        public void Append(ReadOnlyMemory<char> chars)
+        public void Append(in ReadOnlySpan<char> chars)
         {
-            EnsureCapacity(chars);
+            EnsureCapacity(chars.Length);
 
-            chars.CopyTo(buffer[Length..]);
+            chars.CopyTo(buffer[Length..].Span);
             Length += chars.Length;
         }
 
-        private void EnsureCapacity(ReadOnlyMemory<char> chars)
+        private void EnsureCapacity(int charCount)
         {
-            if (buffer.Length - Length < chars.Length)
+            if (buffer.Length - Length < charCount)
             {
-                int newBlockLength = Math.Max(chars.Length, Math.Min(buffer.Length, 0x7FFFFFC7));
+                int newBlockLength = Math.Max(charCount, Math.Min(buffer.Length, 0x7FFFFFC7));
                 int newLength = buffer.Length + newBlockLength;
 
                 // Check for overflow
@@ -40,7 +40,7 @@ namespace FlexableCsvParser
 
         public void Append(MemoryStringBuilder builder)
         {
-            Append(builder.buffer[..builder.Length]);
+            Append(builder.buffer.Span[..builder.Length]);
         }
 
         public void Clear()

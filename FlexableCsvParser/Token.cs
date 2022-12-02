@@ -2,9 +2,9 @@
 
 namespace FlexableCsvParser
 {
-    public struct Token
+    public readonly struct Token
     {
-        public Token(TokenType type, int columnIndex, int lineIndex, ReadOnlyMemory<char> value)
+        public Token(in TokenType type, in int columnIndex, in int lineIndex, in ReadOnlyMemory<char> value)
         {
             Type = type;
             ColumnIndex = columnIndex;
@@ -12,10 +12,10 @@ namespace FlexableCsvParser
             Value = value;
         }
 
-        public TokenType Type { get; }
-        public int ColumnIndex { get; }
-        public int LineIndex { get; }
-        public ReadOnlyMemory<char> Value { get; }
+        public readonly TokenType Type;
+        public readonly int ColumnIndex;
+        public readonly int LineIndex;
+        public readonly ReadOnlyMemory<char> Value;
 
         public static bool operator ==(Token left, Token right)
         {
@@ -38,7 +38,7 @@ namespace FlexableCsvParser
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(Type, Value);
+            return HashCode.Combine(Type, ColumnIndex, LineIndex, Value);
         }
 
         public override string ToString()

@@ -15,24 +15,16 @@ namespace FlexableCsvParser
         {
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public override async ValueTask<Token> NextTokenAsync(TextReader reader)
+        protected override bool TryParseToken(in ReadOnlySpan<char> buffer, out TokenType type, out int startOfTokenColumnIndex, out int startOfTokenLineIndex, out int charCount)
         {
             TokenState state = TokenState.Start;
 
-            int startOfTokenColumnIndex = columnIndex;
-            int startOfTokenLineIndex = lineIndex;
+            startOfTokenColumnIndex = columnIndex;
+            startOfTokenLineIndex = lineIndex;
+            charCount = 0;
 
-            while (true)
+            foreach (char c in buffer)
             {
-                if (EndOfBuffer)
-                {
-                    await FillBufferAsync(reader).ConfigureAwait(false);
-                    if (EndOfBuffer)
-                        break;
-                }
-
-                char c = CurrentChar;
                 switch (state)
                 {
                     case TokenState.Start:
@@ -48,12 +40,18 @@ namespace FlexableCsvParser
 
                     case TokenState.WhiteSpace:
                         if (!char.IsWhiteSpace(c) || c == '\r')
-                            return CreateToken(TokenType.WhiteSpace, startOfTokenColumnIndex, startOfTokenLineIndex);
+                        {
+                            type = TokenType.WhiteSpace;
+                            return true;
+                        }
                         break;
 
                     case TokenState.Text:
                         if (c == ',' || c == '"' || char.IsWhiteSpace(c))
-                            return CreateToken(TokenType.Text, startOfTokenColumnIndex, startOfTokenLineIndex);
+                        {
+                            type = TokenType.Text;
+                            return true;
+                        }
                         break;
 
                     case TokenState.StartOfEndOfRecord:
@@ -80,62 +78,66 @@ namespace FlexableCsvParser
                         break;
 
                     case TokenState.EndOfFieldDelimiter:
-                        return CreateToken(TokenType.FieldDelimiter, startOfTokenColumnIndex, startOfTokenLineIndex);
+                        type = TokenType.FieldDelimiter;
+                        return true;
 
                     case TokenState.EndOfEndOfRecord:
-                        columnIndex = 0;
-                        lineIndex++;
-                        return CreateToken(TokenType.EndOfRecord, startOfTokenColumnIndex, startOfTokenLineIndex);
+                        type = TokenType.EndOfRecord;
+                        return true;
 
                     case TokenState.EndOfQuote:
-                        return CreateToken(TokenType.Quote, startOfTokenColumnIndex, startOfTokenLineIndex);
+                        type = TokenType.Quote;
+                        return true;
 
                     case TokenState.EndOfEscape:
-                        return CreateToken(TokenType.Escape, startOfTokenColumnIndex, startOfTokenLineIndex);
+                        type = TokenType.Escape;
+                        return true;
                 }
 
-                columnIndex++;
-                MoveToNextChar();
+                if (c == '\n')
+                {
+                    lineIndex++;
+                    columnIndex = 0;
+                }
+                else
+                    columnIndex++;
+
+                charCount++;
             }
 
-            switch (state)
+            if (EndOfReader)
             {
-                case TokenState.EndOfFieldDelimiter:
-                    return CreateToken(TokenType.FieldDelimiter, startOfTokenColumnIndex, startOfTokenLineIndex);
-                case TokenState.EndOfEndOfRecord:
-                    columnIndex = 0;
-                    lineIndex++;
-                    return CreateToken(TokenType.EndOfRecord, startOfTokenColumnIndex, startOfTokenLineIndex);
-                case TokenState.EndOfQuote:
-                case TokenState.StartOfEscape:
-                    return CreateToken(TokenType.Quote, startOfTokenColumnIndex, startOfTokenLineIndex);
-                case TokenState.EndOfEscape:
-                    return CreateToken(TokenType.Escape, startOfTokenColumnIndex, startOfTokenLineIndex);
-                case TokenState.Start:
-                    return CreateToken(TokenType.EndOfReader, startOfTokenColumnIndex, startOfTokenLineIndex);
-                default:
-                    return CreateToken(
-                        state == TokenState.WhiteSpace ? TokenType.WhiteSpace : TokenType.Text,
-                        startOfTokenColumnIndex,
-                        lineIndex);
+                switch (state)
+                {
+                    case TokenState.EndOfFieldDelimiter:
+                        type = TokenType.FieldDelimiter;
+                        return true;
+                    case TokenState.EndOfEndOfRecord:
+                        type = TokenType.EndOfRecord;
+                        return true;
+                    case TokenState.EndOfQuote:
+                    case TokenState.StartOfEscape:
+                        type = TokenType.Quote;
+                        return true;
+                    case TokenState.EndOfEscape:
+                        type = TokenType.Escape;
+                        return true;
+                    //case TokenState.Start:
+                    //    token = CreateToken(TokenType.EndOfReader, startOfTokenColumnIndex, startOfTokenLineIndex);
+                    //    return true;
+                    case TokenState.WhiteSpace:
+                        type = TokenType.WhiteSpace;
+                        return true;
+                    case TokenState.Text:
+                        type = TokenType.Text;
+                        return true;
+                }
             }
+
+            type = default;
+            return false;
         }
     }
-
-    /*struct TokenState
-    {
-        public const int Start = 0;
-        public const int EndOfFieldDelimiter = Start + 1;
-        public const int StartOfEndOfRecord = EndOfFieldDelimiter + 1;
-        public const int EndOfEndOfRecord = StartOfEndOfRecord + 1;
-        public const int EndOfQuote = EndOfEndOfRecord + 1;
-        public const int StartOfEscape = EndOfQuote + 1;
-        public const int EndOfEscape = StartOfEscape + 1;
-        public const int WhiteSpace = EndOfEscape + 1;
-        public const int EndOfWhiteSpace = WhiteSpace + 1;
-        public const int Text = EndOfWhiteSpace + 1;
-        public const int EndOfText = Text + 1;
-    }*/
 
     enum TokenState
     {
