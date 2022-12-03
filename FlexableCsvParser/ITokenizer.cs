@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -6,8 +7,12 @@ namespace FlexableCsvParser
 {
     public interface ITokenizer
     {
-        IAsyncEnumerable<Token> EnumerateTokensAsync(TextReader reader);
-        bool TryGetNextToken(out Token token);
-        ValueTask<bool> ReadAsync(TextReader reader);
+        IEnumerable<ITokenizer> EnumerateTokens(TextReader reader);
+        bool TryGetNextToken(TextReader reader);
+
+        TokenType TokenType { get; }
+        ReadOnlySpan<char> TokenValue { get; }
+        int TokenLineNumber { get; }
+        int TokenColumnNumber { get; }
     }
 }

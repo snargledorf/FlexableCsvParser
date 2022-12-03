@@ -12,6 +12,9 @@ namespace FlexableCsvParser
     {
         private int columnIndex, lineIndex;
 
+        private FlexableTokenizerTokenState state = FlexableTokenizerTokenState.Start;
+        private int charCount;
+
         private readonly StateMachine<FlexableTokenizerTokenState, char> stateMachine;
 
         public FlexableTokenizer(Delimiters delimiters)
@@ -20,13 +23,11 @@ namespace FlexableCsvParser
             stateMachine = TokenizerStateMachineFactory.CreateTokenizerStateMachine(delimiters);
         }
 
-        protected override bool TryParseToken(in ReadOnlySpan<char> buffer, out TokenType type, out int startOfTokenColumnIndex, out int startOfTokenLineIndex, out int charCount)
+        protected override bool TryParseToken(ReadOnlySpan<char> buffer, bool endOfReader, out TokenType type, out int startOfTokenColumnIndex, out int startOfTokenLineIndex, out int charCount)
         {
-            var state = FlexableTokenizerTokenState.Start;
-
             startOfTokenColumnIndex = columnIndex;
             startOfTokenLineIndex = lineIndex;
-            charCount = 0;
+            charCount = this.charCount;
 
             foreach (char c in buffer)
             {
@@ -37,26 +38,32 @@ namespace FlexableCsvParser
                     {
                         case FlexableTokenizerTokenState.EndOfText:
                             type = TokenType.Text;
+                            ResetState();
                             return true;
 
                         case FlexableTokenizerTokenState.EndOfWhiteSpace:
                             type = TokenType.WhiteSpace;
+                            ResetState();
                             return true;
 
                         case FlexableTokenizerTokenState.EndOfFieldDelimiter:
                             type = TokenType.FieldDelimiter;
+                            ResetState();
                             return true;
 
                         case FlexableTokenizerTokenState.EndOfEndOfRecord:
                             type = TokenType.EndOfRecord;
+                            ResetState();
                             return true;
 
                         case FlexableTokenizerTokenState.EndOfQuote:
                             type = TokenType.Quote;
+                            ResetState();
                             return true;
 
                         case FlexableTokenizerTokenState.EndOfEscape:
                             type = TokenType.Escape;
+                            ResetState();
                             return true;
                     }
                 }
@@ -72,7 +79,7 @@ namespace FlexableCsvParser
                 charCount++;
             }
 
-            if (EndOfReader)
+            if (endOfReader)
             {
                 if (state != FlexableTokenizerTokenState.Start && stateMachine.TryGetDefaultForState(state, out FlexableTokenizerTokenState defaultState))
                     state = defaultState;
@@ -81,30 +88,41 @@ namespace FlexableCsvParser
                 {
                     case FlexableTokenizerTokenState.EndOfFieldDelimiter:
                         type = TokenType.FieldDelimiter;
+                        ResetState();
                         return true;
                     case FlexableTokenizerTokenState.EndOfEndOfRecord:
                         type = TokenType.EndOfRecord;
+                        ResetState();
                         return true;
                     case FlexableTokenizerTokenState.EndOfQuote:
                         type = TokenType.Quote;
+                        ResetState();
                         return true;
                     case FlexableTokenizerTokenState.EndOfEscape:
                         type = TokenType.Escape;
+                        ResetState();
                         return true;
-                    //case FlexableTokenizerTokenState.Start:
-                    //    token = CreateToken(TokenType.EndOfReader, startOfTokenColumnIndex, startOfTokenLineIndex);
-                    //    return true;
                     case FlexableTokenizerTokenState.WhiteSpace:
                         type = TokenType.WhiteSpace;
+                        ResetState();
                         return true;
                     case FlexableTokenizerTokenState.Text:
                         type = TokenType.Text;
+                        ResetState();
                         return true;
                 }
             }
 
+            this.charCount = charCount;
             type = default;
             return false;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void ResetState()
+        {
+            state = FlexableTokenizerTokenState.Start;
+            charCount = 0;
         }
     }
 

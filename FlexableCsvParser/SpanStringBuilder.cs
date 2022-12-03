@@ -9,15 +9,19 @@ namespace FlexableCsvParser
 
         public int Length { get; private set; }
 
-        public MemoryStringBuilder()
+        public ReadOnlySpan<char> Span
         {
+            get
+            {
+                return buffer.Span[..Length];
+            }
         }
 
-        public void Append(in ReadOnlySpan<char> chars)
+        public void Append(ReadOnlySpan<char> chars)
         {
             EnsureCapacity(chars.Length);
 
-            chars.CopyTo(buffer[Length..].Span);
+            chars.CopyTo(buffer.Span[Length..]);
             Length += chars.Length;
         }
 
@@ -40,7 +44,7 @@ namespace FlexableCsvParser
 
         public void Append(MemoryStringBuilder builder)
         {
-            Append(builder.buffer.Span[..builder.Length]);
+            Append(builder.Span);
         }
 
         public void Clear()
@@ -50,7 +54,7 @@ namespace FlexableCsvParser
 
         public override string ToString()
         {
-            return buffer[..Length].ToString();
+            return Span.ToString();
         }
     }
 }

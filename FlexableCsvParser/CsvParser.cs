@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -22,31 +23,32 @@ namespace FlexableCsvParser
 
         private readonly string quote;
 
-        private Memory<string> currentRecord;
-        private int currentFieldIndex;
+        private MemoryStringBuilder currentRecordBuffer = new MemoryStringBuilder();
+
+        private List<RecordFieldInfo> currentRecordFields;
 
         private int expectedRecordLength;
-        private bool currentRecordInitialized;
-        private int recordLength;
 
         private readonly MemoryStringBuilder leadingWhiteSpaceValue = new MemoryStringBuilder();
         private readonly MemoryStringBuilder possibleTrailingWhiteSpaceValue = new MemoryStringBuilder();
-        private readonly List<string> initialRecordBuilder = new List<string>();
-        
+
         private readonly MemoryStringBuilder fieldBuilder = new MemoryStringBuilder();
 
-        public CsvParser(TextReader reader)
-            : this(reader, CsvParserConfig.Default)
+        public CsvParser(TextReader reader, int recordLength)
+            : this(reader, recordLength, CsvParserConfig.Default)
         {
         }
 
-        public CsvParser(TextReader reader, CsvParserConfig config)
-            : this(reader, config, Tokenizer.For(config.Delimiters))
+        public CsvParser(TextReader reader, int recordLength, CsvParserConfig config)
+            : this(reader, recordLength, config, Tokenizer.For(config.Delimiters))
         {
         }
 
-        public CsvParser(TextReader reader, CsvParserConfig config, ITokenizer tokenizer)
+        public CsvParser(TextReader reader, int recordLength, CsvParserConfig config, ITokenizer tokenizer)
         {
+            if (recordLength <= 0)
+                throw new ArgumentOutOfRangeException("Record length required");
+
             this.reader = reader;
             this.config = config;
             this.tokenizer = tokenizer;
@@ -56,201 +58,203 @@ namespace FlexableCsvParser
 
             parserStateMachine = CsvParserStateMachineFactory.BuildParserStateMachine();
 
-            currentRecord = new string[config.RecordLength];
+            expectedRecordLength = recordLength;
 
-            expectedRecordLength = recordLength = currentRecord.Length;
-            currentRecordInitialized = expectedRecordLength != 0;
+            currentRecordFields = new List<RecordFieldInfo>(expectedRecordLength);
 
             quote = config.Delimiters.Quote;
         }
 
-        public async IAsyncEnumerable<ReadOnlyMemory<string>> EnumerateRecords()
+        public ValueTask<int> ReadRecordAsync(Memory<string> record)
         {
-            while (await ReadAsync().ConfigureAwait(false))
-                yield return currentRecord;
+            return new ValueTask<int>(Task.Factory.StartNew((state) =>
+            {
+                (CsvParser parser, Memory<string> r) = ((CsvParser, Memory<string>))state;
+                return parser.ReadRecord(r.Span);
+            }, (this, record), default, TaskCreationOptions.DenyChildAttach, TaskScheduler.Default));
         }
 
-        public async ValueTask<bool> ReadRecordAsync(Memory<string> record)
+        public int ReadRecord(Span<string> record)
         {
-            if (await ReadAsync().ConfigureAwait(false))
+            if (Read())
             {
-                currentRecord[..recordLength].CopyTo(record);
-                return true;
+                int bufferLength = Math.Min(record.Length, expectedRecordLength);
+                if (bufferLength > FieldCount && config.IncompleteRecordHandling == IncompleteRecordHandling.TruncateRecord)
+                    bufferLength = FieldCount;
+
+                string[] buffer = ArrayPool<string>.Shared.Rent(bufferLength);
+                try
+                {
+                    Span<string> bufferSpan = buffer[..bufferLength];
+                    for (int fieldIndex = 0; fieldIndex < bufferLength; fieldIndex++)
+                        bufferSpan[fieldIndex] = GetString(fieldIndex);
+
+                    bufferSpan.CopyTo(record);
+
+                    return bufferLength;
+                }
+                finally
+                {
+                    ArrayPool<string>.Shared.Return(buffer);
+                }
             }
 
-            return false;
+            return 0;
         }
 
-        public async ValueTask<(bool Success, ReadOnlyMemory<string> Record)> ReadRecordAsync()
+        public int FieldCount => currentRecordFields.Count;
+
+        public string GetString(int fieldIndex)
         {
-            if (await ReadAsync().ConfigureAwait(false))
+            if (fieldIndex >= expectedRecordLength)
+                throw new ArgumentOutOfRangeException(nameof(fieldIndex));
+
+            // TODO Cache values
+
+            if (fieldIndex >= FieldCount)
             {
-                Memory<string> record = new string[recordLength];
-                currentRecord[..recordLength].CopyTo(record);
-                return (true, record);
+                switch (config.IncompleteRecordHandling)
+                {
+                    case IncompleteRecordHandling.ThrowException:
+                        throw new InvalidDataException($"Record is incomplete"); // TODO output partial record
+
+                    case IncompleteRecordHandling.FillInWithEmpty:
+                        return string.Empty;
+
+                    case IncompleteRecordHandling.FillInWithNull:
+                        return null;
+
+                    case IncompleteRecordHandling.TruncateRecord:
+                        throw new ArgumentOutOfRangeException(nameof(fieldIndex));
+
+                    default:
+                        throw new InvalidOperationException($"Not a valid {nameof(IncompleteRecordHandling)}");
+                }
             }
 
-            return (false, ReadOnlyMemory<string>.Empty);
+            var fieldInfo = currentRecordFields[fieldIndex];
+            return currentRecordBuffer.Span.Slice(fieldInfo.StartIndex, fieldInfo.Length).ToString();
         }
 
-        private async ValueTask<bool> ReadAsync()
+        public bool Read()
         {
             var state = ParserState.Start;
 
-            currentFieldIndex = 0;
+            currentRecordFields.Clear();
+            currentRecordBuffer.Clear();
 
             ParserState previousState;
-
-            do
+            while (tokenizer.TryGetNextToken(reader))
             {
-                while (tokenizer.TryGetNextToken(out Token token))
+                previousState = state;
+                if (parserStateMachine.TryTransition(state, tokenizer.TokenType, out ParserState newState))
                 {
-                    previousState = state;
-                    if (parserStateMachine.TryTransition(state, token.Type, out ParserState newState))
+                    state = newState;
+                    switch (state)
                     {
-                        state = newState;
-                        switch (state)
-                        {
-                            case ParserState.UnquotedFieldText:
-                            case ParserState.QuotedFieldText:
-                                AppendLeadingWhiteSpace();
-                                AppendTrailingWhiteSpace();
-                                fieldBuilder.Append(token.Value.Span);
-                                break;
+                        case ParserState.UnquotedFieldText:
+                        case ParserState.QuotedFieldText:
+                            AppendLeadingWhiteSpace();
+                            AppendTrailingWhiteSpace();
+                            fieldBuilder.Append(tokenizer.TokenValue);
+                            break;
 
-                            case ParserState.EndOfField:
-                                AddCurrentField();
-                                break;
+                        case ParserState.EndOfField:
+                            AddCurrentField();
+                            break;
 
-                            case ParserState.EndOfRecord:
-                                CheckRecord();
-                                return true;
+                        case ParserState.EndOfRecord:
+                            CheckRecord();
+                            return true;
 
-                            case ParserState.EscapeAfterLeadingEscape:
-                            case ParserState.QuotedFieldEscape:
-                                AppendLeadingWhiteSpace();
-                                AppendTrailingWhiteSpace();
-                                fieldBuilder.Append(quote.AsSpan());
-                                break;
+                        case ParserState.EscapeAfterLeadingEscape:
+                        case ParserState.QuotedFieldEscape:
+                            AppendLeadingWhiteSpace();
+                            AppendTrailingWhiteSpace();
+                            fieldBuilder.Append(quote.AsSpan());
+                            break;
 
-                            case ParserState.QuotedFieldLeadingWhiteSpace:
-                            case ParserState.LeadingWhiteSpace:
-                                // Only store the leading whitespace if there is a possiblity we might need it
-                                // IE. If trim leading isn't enabled
-                                if (!trimLeadingWhiteSpace)
-                                    leadingWhiteSpaceValue.Append(token.Value.Span);
-                                break;
+                        case ParserState.QuotedFieldLeadingWhiteSpace:
+                        case ParserState.LeadingWhiteSpace:
+                            // Only store the leading whitespace if there is a possiblity we might need it
+                            // IE. If trim leading isn't enabled
+                            if (!trimLeadingWhiteSpace)
+                                leadingWhiteSpaceValue.Append(tokenizer.TokenValue);
+                            break;
 
-                            case ParserState.QuotedFieldTrailingWhiteSpace:
-                            case ParserState.UnquotedFieldTrailingWhiteSpace:
-                                // Only store the trailing whitespace if trailing whitespace trimming is enabled
-                                // This is so if we do end up with more field text, we can append the whitespace
-                                // since that means it isn't trailing
-                                if (trimTrailingWhiteSpace)
-                                    possibleTrailingWhiteSpaceValue.Append(token.Value.Span);
-                                else
-                                    fieldBuilder.Append(token.Value.Span);
-                                break;
+                        case ParserState.QuotedFieldTrailingWhiteSpace:
+                        case ParserState.UnquotedFieldTrailingWhiteSpace:
+                            // Only store the trailing whitespace if trailing whitespace trimming is enabled
+                            // This is so if we do end up with more field text, we can append the whitespace
+                            // since that means it isn't trailing
+                            if (trimTrailingWhiteSpace)
+                                possibleTrailingWhiteSpaceValue.Append(tokenizer.TokenValue);
+                            else
+                                fieldBuilder.Append(tokenizer.TokenValue);
+                            break;
 
-                            case ParserState.UnexpectedToken:
-                                throw new InvalidDataException($"Unexpected token: State = {previousState}, Token = {token}, Buffer = {fieldBuilder}");
+                        case ParserState.UnexpectedToken:
+                            throw new InvalidDataException($"Unexpected token: State = {previousState}, Token = {tokenizer.TokenValue.ToString()}, Buffer = {fieldBuilder}");
 
-                            default:
-                                ClearLeadingWhiteSpace();
-                                break;
-                        }
-                    }
-                    else
-                    {
-                        switch (state)
-                        {
-                            case ParserState.QuotedFieldText:
-                            case ParserState.UnquotedFieldText:
-                                fieldBuilder.Append(token.Value.Span);
-                                break;
-
-                            case ParserState.EscapeAfterLeadingEscape: // I don't think this will ever be hit???
-                                fieldBuilder.Append(quote.AsSpan());
-                                break;
-
-                            default:
-                                throw new InvalidDataException($"Unexpected state: State = {state}, Token = {token}, Buffer = {fieldBuilder}");
-                        }
+                        default:
+                            ClearLeadingWhiteSpace();
+                            break;
                     }
                 }
-            } while (await tokenizer.ReadAsync(reader).ConfigureAwait(false));
+                else
+                {
+                    switch (state)
+                    {
+                        case ParserState.QuotedFieldText:
+                        case ParserState.UnquotedFieldText:
+                            fieldBuilder.Append(tokenizer.TokenValue);
+                            break;
+
+                        case ParserState.EscapeAfterLeadingEscape: // I don't think this will ever be hit???
+                            fieldBuilder.Append(quote.AsSpan());
+                            break;
+
+                        default:
+                            throw new InvalidDataException($"Unexpected state: State = {state}, Token = {tokenizer.TokenValue.ToString()}, Buffer = {fieldBuilder}");
+                    }
+                }
+            }
 
             if (state == ParserState.Start)
                 return false;
 
-            if (state == ParserState.QuotedFieldText ||
-                (parserStateMachine.TryGetDefaultForState(state, out ParserState defaultState) && defaultState == ParserState.QuotedFieldText))
+            bool missingClosingQuote = state == ParserState.QuotedFieldText;
+            if (!missingClosingQuote && parserStateMachine.TryGetDefaultForState(state, out ParserState defaultState))
+                missingClosingQuote = defaultState == ParserState.QuotedFieldText;
+
+            if (missingClosingQuote)
                 throw new Exception($"Final quoted field did not have a closing quote: State = {state}, Buffer = {fieldBuilder}");
 
             CheckRecord();
             return true;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void CheckRecord()
         {
             AddCurrentField();
 
-            if (!currentRecordInitialized)
-            {
-                currentRecord = initialRecordBuilder.ToArray();
-                currentFieldIndex = expectedRecordLength = recordLength = currentRecord.Length;
-                currentRecordInitialized = true;
-            }
-            else if (currentFieldIndex != expectedRecordLength)
-            {
-                switch(config.IncompleteRecordHandling)
-                {
-                    case IncompleteRecordHandling.ThrowException:
-                        throw new InvalidDataException($"Record is incomplete: {string.Join(',', currentRecord[..currentFieldIndex].ToArray())}");
-
-                    case IncompleteRecordHandling.FillInWithEmpty:
-                        currentRecord[currentFieldIndex..].Span.Fill(string.Empty);
-                        break;
-
-                    case IncompleteRecordHandling.FillInWithNull:
-                        currentRecord[currentFieldIndex..].Span.Fill(null);
-                        break;
-
-                    case IncompleteRecordHandling.TruncateRecord:
-                        recordLength = currentFieldIndex;
-                        break;
-
-                    default:
-                        throw new InvalidOperationException($"Not a valid {nameof(IncompleteRecordHandling)}");
-                }
-            }
-            else if (config.IncompleteRecordHandling == IncompleteRecordHandling.TruncateRecord)
-            {
-                recordLength = expectedRecordLength;
-            }
+            if (FieldCount < expectedRecordLength && config.IncompleteRecordHandling == IncompleteRecordHandling.ThrowException)
+                throw new InvalidDataException($"Record is incomplete"); // TODO output partial record
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void AddCurrentField()
         {
             AppendLeadingWhiteSpace();
             ClearTrailingWhiteSpace();
 
-            string value = fieldBuilder.ToString();
+            var fieldInfo = new RecordFieldInfo(currentRecordBuffer.Length, fieldBuilder.Length);
+
+            currentRecordBuffer.Append(fieldBuilder);
             fieldBuilder.Clear();
 
-            if (!currentRecordInitialized)
-            {
-                initialRecordBuilder.Add(value);
-            }
-            else
-            {
-                currentRecord.Span[currentFieldIndex++] = value;
-            }
+            currentRecordFields.Add(fieldInfo);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void AppendLeadingWhiteSpace()
         {
             if (leadingWhiteSpaceValue.Length == 0)
@@ -266,7 +270,6 @@ namespace FlexableCsvParser
             leadingWhiteSpaceValue.Clear();
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void AppendTrailingWhiteSpace()
         {
             if (possibleTrailingWhiteSpaceValue.Length == 0)

@@ -13,27 +13,38 @@ namespace FlexableCsvParser
         public static Tokenizer CreateRFC4180Tokenizer() => new RFC4180Tokenizer();
         public static Tokenizer CreateDefaultTokenizer() => CreateRFC4180Tokenizer();
 
-        protected readonly ReadOnlyMemory<char> FieldValue;
-        protected readonly ReadOnlyMemory<char> EndOfRecordValue;
-        protected readonly ReadOnlyMemory<char> QuoteValue;
-        protected readonly ReadOnlyMemory<char> EscapeValue;
-
         private Memory<char> readBuffer = new char[4096];
 
         private int readBufferIndex;
         private int readBufferLength;
 
+        private int tokenStartIndex;
+
+        private bool endOfReader;
+
         protected Tokenizer(Delimiters delimiters)
         {
             Delimiters = delimiters;
-
-            FieldValue = delimiters.Field.AsMemory();
-            EndOfRecordValue = delimiters.EndOfRecord.AsMemory();
-            QuoteValue = delimiters.Quote.AsMemory();
-            EscapeValue = delimiters.Escape.AsMemory();
         }
 
         public Delimiters Delimiters { get; }
+
+        private int tokenLength;
+
+        public TokenType TokenType { get; private set; }
+
+        public ReadOnlySpan<char> TokenValue
+        {
+            get
+            {
+                int endIndex = tokenStartIndex + tokenLength;
+                return readBuffer[tokenStartIndex..endIndex].Span;
+            }
+        }
+
+        public int TokenLineNumber { get; private set; }
+
+        public int TokenColumnNumber { get; private set; }
 
         public static Tokenizer For(Delimiters delimiters)
         {
@@ -43,59 +54,67 @@ namespace FlexableCsvParser
             return new FlexableTokenizer(delimiters);
         }
 
-        public virtual async IAsyncEnumerable<Token> EnumerateTokensAsync(TextReader reader)
+        public virtual IEnumerable<ITokenizer> EnumerateTokens(TextReader reader)
         {
-            while (await ReadAsync(reader).ConfigureAwait(false))
-            {
-                while (TryGetNextToken(out Token token))
-                {
-                    yield return token;
-                }
-            }
+            while (TryGetNextToken(reader))
+                yield return this;
         }
 
-        public async ValueTask<bool> ReadAsync(TextReader reader)
+        public bool TryGetNextToken(TextReader reader)
         {
-            if (!EndOfReader)
-                return await FillBufferAsync(reader).ConfigureAwait(false);
+            tokenStartIndex += tokenLength;
+            tokenLength = 0;
+            readBufferIndex = tokenStartIndex;
+
+            do
+            {
+                Span<char> buffer = readBuffer[readBufferIndex..readBufferLength].Span;
+                if (TryParseToken(buffer, endOfReader, out TokenType type, out int columnIndex, out int lineIndex, out int tokenLength))
+                {
+                    TokenType = type;
+                    TokenColumnNumber = columnIndex;
+                    TokenLineNumber = lineIndex;
+                    this.tokenLength = tokenLength;
+
+                    return true;
+                }
+                else
+                {
+                    readBufferIndex += buffer.Length;
+                }
+            }
+            while (Read(reader));
+
+            return false;
+        }
+
+        protected abstract bool TryParseToken(ReadOnlySpan<char> buffer, bool endOfReader, out TokenType type, out int columnIndex, out int lineIndex, out int charCount);
+
+        private bool Read(TextReader reader)
+        {
+            if (!endOfReader)
+                return FillBuffer(reader);
 
             return readBufferIndex != readBufferLength;
         }
 
-        public bool TryGetNextToken(out Token token)
+        private bool FillBuffer(TextReader reader)
         {
-            if (TryParseToken(readBuffer[readBufferIndex..readBufferLength].Span, out TokenType type, out int columnIndex, out int lineIndex, out int charCount))
-            {
-                ReadOnlyMemory<char> value = readBuffer[readBufferIndex..readBufferLength][..charCount];
-                token = new Token(type, columnIndex, lineIndex, value);
-
-                readBufferIndex += charCount;
-                return true;
-            }
-
-            token = default;
-            return false;
-        }
-
-        protected abstract bool TryParseToken(in ReadOnlySpan<char> buffer, out TokenType type, out int columnIndex, out int lineIndex, out int charCount);
-
-        public bool EndOfReader { get; private set; }
-
-        private async ValueTask<bool> FillBufferAsync(TextReader reader)
-        {
-            if (EndOfReader)
+            if (endOfReader)
                 return false;
 
-            if (readBufferIndex != 0)
+            if (tokenStartIndex != 0)
             {
                 // Move the start of the current token to the start of the buffer
-                readBuffer[readBufferIndex..].CopyTo(readBuffer);
+                readBuffer[tokenStartIndex..].CopyTo(readBuffer);
 
                 // Adjust the current buffer length
-                readBufferLength -= readBufferIndex;
+                readBufferLength -= tokenStartIndex;
 
                 // Shift the current read index
-                readBufferIndex = 0;
+                readBufferIndex -= tokenStartIndex;
+
+                tokenStartIndex = 0;
             }
             else if (readBufferLength != 0)
             {
@@ -108,12 +127,12 @@ namespace FlexableCsvParser
                 oldBuffer.CopyTo(readBuffer);
             }
 
-            Memory<char> buffer = readBuffer[readBufferLength..];
-            int charsRead = await reader.ReadAsync(buffer).ConfigureAwait(false);
+            Span<char> buffer = readBuffer[readBufferLength..].Span;
+            int charsRead = reader.Read(buffer);
 
             readBufferLength += charsRead;
 
-            EndOfReader = charsRead < buffer.Length && reader.Peek() == -1;
+            endOfReader = charsRead < buffer.Length && reader.Peek() == -1;
 
             return readBufferIndex != readBufferLength;
         }

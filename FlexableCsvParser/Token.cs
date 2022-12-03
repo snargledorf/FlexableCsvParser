@@ -4,7 +4,7 @@ namespace FlexableCsvParser
 {
     public readonly struct Token
     {
-        public Token(in TokenType type, in int columnIndex, in int lineIndex, in ReadOnlyMemory<char> value)
+        public Token(TokenType type, int columnIndex, int lineIndex, ReadOnlyMemory<char> value)
         {
             Type = type;
             ColumnIndex = columnIndex;
