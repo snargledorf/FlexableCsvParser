@@ -15,19 +15,31 @@ namespace FlexableCsvParser
         private FlexableTokenizerTokenState state = FlexableTokenizerTokenState.Start;
         private int charCount;
 
+        private int startOfTokenColumnIndex;
+        private int startOfTokenLineIndex;
+
         private readonly StateMachine<FlexableTokenizerTokenState, char> stateMachine;
 
-        public FlexableTokenizer(Delimiters delimiters)
-            : base(delimiters)
+        public FlexableTokenizer(TextReader reader, Delimiters delimiters)
+            : base(reader, delimiters)
         {
             stateMachine = TokenizerStateMachineFactory.CreateTokenizerStateMachine(delimiters);
         }
 
         protected override bool TryParseToken(ReadOnlySpan<char> buffer, bool endOfReader, out TokenType type, out int startOfTokenColumnIndex, out int startOfTokenLineIndex, out int charCount)
         {
-            startOfTokenColumnIndex = columnIndex;
-            startOfTokenLineIndex = lineIndex;
             charCount = this.charCount;
+
+            if (charCount == 0)
+            {
+                this.startOfTokenColumnIndex = startOfTokenColumnIndex = columnIndex;
+                this.startOfTokenLineIndex = startOfTokenLineIndex = lineIndex;
+            }
+            else
+            {
+                startOfTokenColumnIndex = this.startOfTokenColumnIndex;
+                startOfTokenLineIndex = this.startOfTokenLineIndex;
+            }
 
             foreach (char c in buffer)
             {

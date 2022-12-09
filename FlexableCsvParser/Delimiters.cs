@@ -19,7 +19,7 @@ namespace FlexableCsvParser
             Quote = quote;
             Escape = escape;
 
-            IsRFC4180Compliant = Field == ","
+            AreRFC4180Compliant = Field == ","
                 && EndOfRecord == "\r\n"
                 && Quote == "\""
                 && Escape == "\"\"";
@@ -38,6 +38,6 @@ namespace FlexableCsvParser
         public string EndOfRecord { get; }
         public string Quote { get; }
         public string Escape { get; }
-        public bool IsRFC4180Compliant { get; }
+        public bool AreRFC4180Compliant { get; }
     }
 }

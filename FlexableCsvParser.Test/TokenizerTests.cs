@@ -14,7 +14,6 @@ namespace FlexableCsvParser.Test
         public void SimpleRFC4180Csv()
         {
             const string Csv = "123, \"456,\"\"789\"\"\" ,ABC";
-            var tokenizer = new RFC4180Tokenizer();
 
             var expectedTokens = new[]
             {
@@ -34,7 +33,8 @@ namespace FlexableCsvParser.Test
                 //new Token(TokenType.EndOfReader, 23, 0, null),
             };
 
-            Token[] tokens = tokenizer.EnumerateTokens(new StringReader(Csv)).Select(CloneToken).ToArray();
+            var tokenizer = new RFC4180Tokenizer(new StringReader(Csv));
+            Token[] tokens = tokenizer.EnumerateTokens().Select(CloneToken).ToArray();
             CollectionAssert.AreEqual(expectedTokens, tokens);
         }
 
@@ -42,7 +42,6 @@ namespace FlexableCsvParser.Test
         public async Task SimpleRFC4180CsvQuotedFieldEndOfReader()
         {
             const string Csv = "123, \"456,\"\"789\"\"\" ,\"ABC\"";
-            var tokenizer = new RFC4180Tokenizer();
 
             var expectedTokens = new[]
             {
@@ -64,7 +63,8 @@ namespace FlexableCsvParser.Test
                 //new Token(TokenType.EndOfReader, 25, 0, null),
             };
 
-            Token[] tokens = tokenizer.EnumerateTokens(new StringReader(Csv)).Select(CloneToken).ToArray();
+            var tokenizer = new RFC4180Tokenizer(new StringReader(Csv));
+            Token[] tokens = tokenizer.EnumerateTokens().Select(CloneToken).ToArray();
             CollectionAssert.AreEqual(expectedTokens, tokens);
         }
 
@@ -72,7 +72,6 @@ namespace FlexableCsvParser.Test
         public async Task SimpleRFC4180CsvFlexable()
         {
             const string Csv = "123, \"456,\"\"789\"\"\" ,ABC";
-            var tokenizer = new FlexableTokenizer(Delimiters.RFC4180);
 
             var expectedTokens = new[]
             {
@@ -92,7 +91,8 @@ namespace FlexableCsvParser.Test
                 //new Token(TokenType.EndOfReader, 23, 0, null),
             };
 
-            Token[] tokens = tokenizer.EnumerateTokens(new StringReader(Csv)).Select(CloneToken).ToArray();
+            var tokenizer = new FlexableTokenizer(new StringReader(Csv), Delimiters.RFC4180);
+            Token[] tokens = tokenizer.EnumerateTokens().Select(CloneToken).ToArray();
             CollectionAssert.AreEqual(expectedTokens, tokens);
         }
 
@@ -100,7 +100,6 @@ namespace FlexableCsvParser.Test
         public async Task SimpleRFC4180CsvFlexableQuotedFieldEndOfReader()
         {
             const string Csv = "123, \"456,\"\"789\"\"\" ,\"ABC\"";
-            var tokenizer = new FlexableTokenizer(Delimiters.RFC4180);
 
             var expectedTokens = new[]
             {
@@ -122,7 +121,8 @@ namespace FlexableCsvParser.Test
                 //new Token(TokenType.EndOfReader, 25, 0, null),
             };
 
-            Token[] tokens = tokenizer.EnumerateTokens(new StringReader(Csv)).Select(CloneToken).ToArray();
+            var tokenizer = new FlexableTokenizer(new StringReader(Csv), Delimiters.RFC4180);
+            Token[] tokens = tokenizer.EnumerateTokens().Select(CloneToken).ToArray();
             CollectionAssert.AreEqual(expectedTokens, tokens);
         }
 
@@ -130,7 +130,6 @@ namespace FlexableCsvParser.Test
         public async Task MultipleSharedDelimitersCsvFlexable()
         {
             const string Csv = "123<Foo <FooB456<Foo789<FooB <FooABC<FooBar";
-            var tokenizer = new FlexableTokenizer(new Delimiters("<Foo", "<FooBar", "<FooB"));
 
             var expectedTokens = new[]
             {
@@ -149,7 +148,8 @@ namespace FlexableCsvParser.Test
                 //new Token(TokenType.EndOfReader, 0, 1, null),
             };
 
-            Token[] tokens = tokenizer.EnumerateTokens(new StringReader(Csv)).Select(CloneToken).ToArray();
+            var tokenizer = new FlexableTokenizer(new StringReader(Csv), new Delimiters("<Foo", "<FooBar", "<FooB"));
+            Token[] tokens = tokenizer.EnumerateTokens().Select(CloneToken).ToArray();
             CollectionAssert.AreEqual(expectedTokens, tokens);
         }
 
@@ -157,7 +157,6 @@ namespace FlexableCsvParser.Test
         public async Task RFC4180EndOfRecordAtEndOfCsv()
         {
             const string Csv = "123, \"456,\"\"789\"\"\" ,ABC\r\n";
-            var tokenizer = new RFC4180Tokenizer();
 
             var expectedTokens = new[]
             {
@@ -178,7 +177,8 @@ namespace FlexableCsvParser.Test
                 //new Token(TokenType.EndOfReader, 0, 1, null),
             };
 
-            Token[] tokens = tokenizer.EnumerateTokens(new StringReader(Csv)).Select(CloneToken).ToArray();
+            var tokenizer = new RFC4180Tokenizer(new StringReader(Csv));
+            Token[] tokens = tokenizer.EnumerateTokens().Select(CloneToken).ToArray();
             CollectionAssert.AreEqual(expectedTokens, tokens);
         }
 
@@ -186,7 +186,6 @@ namespace FlexableCsvParser.Test
         public async Task FlexableEndOfRecordAtEndOfCsv()
         {
             const string Csv = "123, \"456,\"\"789\"\"\" ,ABC\r\n";
-            var tokenizer = new FlexableTokenizer(Delimiters.RFC4180);
 
             var expectedTokens = new[]
             {
@@ -207,7 +206,8 @@ namespace FlexableCsvParser.Test
                 //new Token(TokenType.EndOfReader, 0, 1, null),
             };
 
-            Token[] tokens = tokenizer.EnumerateTokens(new StringReader(Csv)).Select(CloneToken).ToArray();
+            var tokenizer = new FlexableTokenizer(new StringReader(Csv), Delimiters.RFC4180);
+            Token[] tokens = tokenizer.EnumerateTokens().Select(CloneToken).ToArray();
             CollectionAssert.AreEqual(expectedTokens, tokens);
         }
 
@@ -236,7 +236,6 @@ namespace FlexableCsvParser.Test
         public async Task BlankQuoteAndEscape()
         {
             const string Csv = "123, \"456,\"\"789\"\"\" ,\"ABC\"";
-            var tokenizer = new FlexableTokenizer(new(quote: null, escape: null));
 
             var expectedTokens = new[]
             {
@@ -252,7 +251,8 @@ namespace FlexableCsvParser.Test
                 //new Token(TokenType.EndOfReader, 25, 0, null),
             };
 
-            Token[] tokens = tokenizer.EnumerateTokens(new StringReader(Csv)).Select(CloneToken).ToArray();
+            var tokenizer = new FlexableTokenizer(new StringReader(Csv), new(quote: null, escape: null));
+            Token[] tokens = tokenizer.EnumerateTokens().Select(CloneToken).ToArray();
             CollectionAssert.AreEqual(expectedTokens, tokens);
         }
 
@@ -260,7 +260,6 @@ namespace FlexableCsvParser.Test
         public async Task BlankEscape()
         {
             const string Csv = "123, \"456,\"\"789\"\"\" ,\"ABC\"";
-            var tokenizer = new FlexableTokenizer(new(escape: null));
 
             var expectedTokens = new[]
             {
@@ -284,7 +283,8 @@ namespace FlexableCsvParser.Test
                 //new Token(TokenType.EndOfReader, 25, 0, null),
             };
 
-            Token[] tokens = tokenizer.EnumerateTokens(new StringReader(Csv)).Select(CloneToken).ToArray();
+            var tokenizer = new FlexableTokenizer(new StringReader(Csv), new(escape: null));
+            Token[] tokens = tokenizer.EnumerateTokens().Select(CloneToken).ToArray();
             CollectionAssert.AreEqual(expectedTokens, tokens);
         }
 

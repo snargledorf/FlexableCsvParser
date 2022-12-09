@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Reflection.PortableExecutable;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -8,40 +9,57 @@ namespace FlexableCsvParser
 {
     public class RFC4180Tokenizer : Tokenizer
     {
+        private const char Comma = ',';
+        private const char CariageReturn = '\r';
+        private const char LineFeedCharacter = '\n';
+        private const char DoubleQuote = '"';
+
         private int columnIndex, lineIndex;
 
         private TokenState state = TokenState.Start;
         private int charCount;
 
-        public RFC4180Tokenizer()
-            : base(Delimiters.RFC4180)
+        private int startOfTokenColumnIndex;
+        private int startOfTokenLineIndex;
+
+        public RFC4180Tokenizer(TextReader reader)
+            : base(reader, Delimiters.RFC4180)
         {
         }
 
         protected override bool TryParseToken(ReadOnlySpan<char> buffer, bool endOfReader, out TokenType type, out int startOfTokenColumnIndex, out int startOfTokenLineIndex, out int charCount)
         {
-            startOfTokenColumnIndex = columnIndex;
-            startOfTokenLineIndex = lineIndex;
-
             charCount = this.charCount;
 
-            foreach (char c in buffer)
+            if (charCount == 0)
             {
+                this.startOfTokenColumnIndex = startOfTokenColumnIndex = columnIndex;
+                this.startOfTokenLineIndex = startOfTokenLineIndex = lineIndex;
+            }
+            else
+            {
+                startOfTokenColumnIndex = this.startOfTokenColumnIndex;
+                startOfTokenLineIndex = this.startOfTokenLineIndex;
+            }
+
+            while (!buffer.IsEmpty)
+            {
+                char c = buffer[0];
                 switch (state)
                 {
                     case TokenState.Start:
                         state = c switch
                         {
-                            ',' => TokenState.EndOfFieldDelimiter,
-                            '\r' => TokenState.StartOfEndOfRecord,
-                            '\n' => TokenState.EndOfEndOfRecord,
-                            '"' => TokenState.StartOfEscape,
+                            Comma => TokenState.EndOfFieldDelimiter,
+                            CariageReturn => TokenState.StartOfEndOfRecord,
+                            LineFeedCharacter => TokenState.EndOfEndOfRecord,
+                            DoubleQuote => TokenState.StartOfEscape,
                             _ => char.IsWhiteSpace(c) ? TokenState.WhiteSpace : TokenState.Text
                         };
                         break;
 
                     case TokenState.WhiteSpace:
-                        if (!char.IsWhiteSpace(c) || c == '\r')
+                        if (!char.IsWhiteSpace(c) || c == CariageReturn)
                         {
                             type = TokenType.WhiteSpace;
                             ResetState();
@@ -50,7 +68,7 @@ namespace FlexableCsvParser
                         break;
 
                     case TokenState.Text:
-                        if (c == ',' || c == '"' || char.IsWhiteSpace(c))
+                        if (c == Comma || c == DoubleQuote || char.IsWhiteSpace(c))
                         {
                             type = TokenType.Text;
                             ResetState();
@@ -59,7 +77,7 @@ namespace FlexableCsvParser
                         break;
 
                     case TokenState.StartOfEndOfRecord:
-                        if (c == '\n')
+                        if (c == LineFeedCharacter)
                         {
                             state = TokenState.EndOfEndOfRecord;
                         }
@@ -71,7 +89,7 @@ namespace FlexableCsvParser
                         break;
 
                     case TokenState.StartOfEscape:
-                        if (c == '"')
+                        if (c == DoubleQuote)
                         {
                             state = TokenState.EndOfEscape;
                         }
@@ -102,15 +120,18 @@ namespace FlexableCsvParser
                         return true;
                 }
 
-                if (c == '\n')
+                if (c == LineFeedCharacter)
                 {
                     lineIndex++;
                     columnIndex = 0;
                 }
                 else
+                {
                     columnIndex++;
+                }
 
                 charCount++;
+                buffer = buffer[1..];
             }
 
             if (endOfReader)

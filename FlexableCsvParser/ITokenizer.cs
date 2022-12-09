@@ -7,8 +7,9 @@ namespace FlexableCsvParser
 {
     public interface ITokenizer
     {
-        IEnumerable<ITokenizer> EnumerateTokens(TextReader reader);
-        bool TryGetNextToken(TextReader reader);
+        IEnumerable<ITokenizer> EnumerateTokens();
+
+        bool Read();
 
         TokenType TokenType { get; }
         ReadOnlySpan<char> TokenValue { get; }

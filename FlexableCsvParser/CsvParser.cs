@@ -13,7 +13,6 @@ namespace FlexableCsvParser
 {
     public class CsvParser
     {
-        private readonly TextReader reader;
         private readonly CsvParserConfig config;
         private readonly ITokenizer tokenizer;
         private readonly bool trimLeadingWhiteSpace;
@@ -40,16 +39,15 @@ namespace FlexableCsvParser
         }
 
         public CsvParser(TextReader reader, int recordLength, CsvParserConfig config)
-            : this(reader, recordLength, config, Tokenizer.For(config.Delimiters))
+            : this(Tokenizer.For(config.Delimiters, reader), recordLength, config)
         {
         }
 
-        public CsvParser(TextReader reader, int recordLength, CsvParserConfig config, ITokenizer tokenizer)
+        public CsvParser(ITokenizer tokenizer, int recordLength, CsvParserConfig config)
         {
             if (recordLength <= 0)
                 throw new ArgumentOutOfRangeException("Record length required");
 
-            this.reader = reader;
             this.config = config;
             this.tokenizer = tokenizer;
 
@@ -144,7 +142,7 @@ namespace FlexableCsvParser
             currentRecordBuffer.Clear();
 
             ParserState previousState;
-            while (tokenizer.TryGetNextToken(reader))
+            while (tokenizer.Read())
             {
                 previousState = state;
                 if (parserStateMachine.TryTransition(state, tokenizer.TokenType, out ParserState newState))
