@@ -31,14 +31,12 @@ namespace FlexableCsvParser
         {
             return obj is Token token &&
                    Type == token.Type &&
-                   ColumnIndex == token.ColumnIndex &&
-                   LineIndex == token.LineIndex &&
                    Value.Span.SequenceEqual(token.Value.Span);
         }
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(Type, ColumnIndex, LineIndex, Value);
+            return HashCode.Combine(Type, Value);
         }
 
         public override string ToString()

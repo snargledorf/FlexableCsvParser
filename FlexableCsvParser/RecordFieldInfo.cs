@@ -4,12 +4,15 @@
     {
         public readonly int StartIndex;
 
-        public RecordFieldInfo(int startIndex, int length) : this()
+        public readonly int Length;
+
+        public readonly int EscapedQuoteCount;
+
+        public RecordFieldInfo(int startIndex, int length, int escapedQuoteCount) : this()
         {
             StartIndex = startIndex;
             Length = length;
+            this.EscapedQuoteCount = escapedQuoteCount;
         }
-
-        public readonly int Length;
     }
 }

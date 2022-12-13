@@ -102,7 +102,7 @@ namespace FlexableCsvParser
                 .Default(ParserState.EndOfField);
 
             builder.From(ParserState.LeadingEscape)
-                .When(TokenType.Quote, ParserState.QuotedFieldEscape) // Handles Foo,"""Bar""",Biz
+                .When(TokenType.Quote, ParserState.QuotedFieldText) // Handles Foo,"""Bar""",Biz | Foo,""" Bar""",Biz | Foo,""", Bar""",Biz
                 .When(TokenType.Escape, ParserState.EscapeAfterLeadingEscape) // Handles Foo,""""" Empty quotes",Biz
                 .When(TokenType.WhiteSpace, ParserState.QuotedFieldClosingQuoteTrailingWhiteSpace) // Handles Foo,"" ,Biz
                 .When(TokenType.Text, ParserState.UnexpectedToken)

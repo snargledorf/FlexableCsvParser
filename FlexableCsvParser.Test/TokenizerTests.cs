@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -33,8 +34,8 @@ namespace FlexableCsvParser.Test
                 //new Token(TokenType.EndOfReader, 23, 0, null),
             };
 
-            var tokenizer = new RFC4180Tokenizer(new StringReader(Csv));
-            Token[] tokens = tokenizer.EnumerateTokens().Select(CloneToken).ToArray();
+            var tokenizer = new RFC4180Tokenizer();
+            Token[] tokens = EnumerateTokens(Csv, tokenizer).ToArray();
             CollectionAssert.AreEqual(expectedTokens, tokens);
         }
 
@@ -63,8 +64,8 @@ namespace FlexableCsvParser.Test
                 //new Token(TokenType.EndOfReader, 25, 0, null),
             };
 
-            var tokenizer = new RFC4180Tokenizer(new StringReader(Csv));
-            Token[] tokens = tokenizer.EnumerateTokens().Select(CloneToken).ToArray();
+            var tokenizer = new RFC4180Tokenizer();
+            Token[] tokens = EnumerateTokens(Csv, tokenizer).ToArray();
             CollectionAssert.AreEqual(expectedTokens, tokens);
         }
 
@@ -91,8 +92,8 @@ namespace FlexableCsvParser.Test
                 //new Token(TokenType.EndOfReader, 23, 0, null),
             };
 
-            var tokenizer = new FlexableTokenizer(new StringReader(Csv), Delimiters.RFC4180);
-            Token[] tokens = tokenizer.EnumerateTokens().Select(CloneToken).ToArray();
+            var tokenizer = new FlexableTokenizer(Delimiters.RFC4180);
+            Token[] tokens = EnumerateTokens(Csv, tokenizer).ToArray();
             CollectionAssert.AreEqual(expectedTokens, tokens);
         }
 
@@ -121,8 +122,8 @@ namespace FlexableCsvParser.Test
                 //new Token(TokenType.EndOfReader, 25, 0, null),
             };
 
-            var tokenizer = new FlexableTokenizer(new StringReader(Csv), Delimiters.RFC4180);
-            Token[] tokens = tokenizer.EnumerateTokens().Select(CloneToken).ToArray();
+            var tokenizer = new FlexableTokenizer(Delimiters.RFC4180);
+            Token[] tokens = EnumerateTokens(Csv, tokenizer).ToArray();
             CollectionAssert.AreEqual(expectedTokens, tokens);
         }
 
@@ -148,8 +149,8 @@ namespace FlexableCsvParser.Test
                 //new Token(TokenType.EndOfReader, 0, 1, null),
             };
 
-            var tokenizer = new FlexableTokenizer(new StringReader(Csv), new Delimiters("<Foo", "<FooBar", "<FooB"));
-            Token[] tokens = tokenizer.EnumerateTokens().Select(CloneToken).ToArray();
+            var tokenizer = new FlexableTokenizer(new Delimiters("<Foo", "<FooBar", "<FooB"));
+            Token[] tokens = EnumerateTokens(Csv, tokenizer).ToArray();
             CollectionAssert.AreEqual(expectedTokens, tokens);
         }
 
@@ -177,8 +178,8 @@ namespace FlexableCsvParser.Test
                 //new Token(TokenType.EndOfReader, 0, 1, null),
             };
 
-            var tokenizer = new RFC4180Tokenizer(new StringReader(Csv));
-            Token[] tokens = tokenizer.EnumerateTokens().Select(CloneToken).ToArray();
+            var tokenizer = new RFC4180Tokenizer();
+            Token[] tokens = EnumerateTokens(Csv, tokenizer).ToArray();
             CollectionAssert.AreEqual(expectedTokens, tokens);
         }
 
@@ -206,8 +207,8 @@ namespace FlexableCsvParser.Test
                 //new Token(TokenType.EndOfReader, 0, 1, null),
             };
 
-            var tokenizer = new FlexableTokenizer(new StringReader(Csv), Delimiters.RFC4180);
-            Token[] tokens = tokenizer.EnumerateTokens().Select(CloneToken).ToArray();
+            var tokenizer = new FlexableTokenizer(Delimiters.RFC4180);
+            Token[] tokens = EnumerateTokens(Csv, tokenizer).ToArray();
             CollectionAssert.AreEqual(expectedTokens, tokens);
         }
 
@@ -251,8 +252,8 @@ namespace FlexableCsvParser.Test
                 //new Token(TokenType.EndOfReader, 25, 0, null),
             };
 
-            var tokenizer = new FlexableTokenizer(new StringReader(Csv), new(quote: null, escape: null));
-            Token[] tokens = tokenizer.EnumerateTokens().Select(CloneToken).ToArray();
+            var tokenizer = new FlexableTokenizer(new(quote: null, escape: null));
+            Token[] tokens = EnumerateTokens(Csv, tokenizer).ToArray();
             CollectionAssert.AreEqual(expectedTokens, tokens);
         }
 
@@ -283,16 +284,27 @@ namespace FlexableCsvParser.Test
                 //new Token(TokenType.EndOfReader, 25, 0, null),
             };
 
-            var tokenizer = new FlexableTokenizer(new StringReader(Csv), new(escape: null));
-            Token[] tokens = tokenizer.EnumerateTokens().Select(CloneToken).ToArray();
+            var tokenizer = new FlexableTokenizer(new(escape: null));
+            Token[] tokens = EnumerateTokens(Csv, tokenizer).ToArray();
             CollectionAssert.AreEqual(expectedTokens, tokens);
         }
 
-        private static Token CloneToken(ITokenizer t)
+        private static IEnumerable<Token> EnumerateTokens(ReadOnlySpan<char> buffer, ITokenizer tokenizer)
         {
-            Memory<char> value = new char[t.TokenValue.Length];
-            t.TokenValue.CopyTo(value.Span);
-            return new Token(t.TokenType, t.TokenColumnNumber, t.TokenLineNumber, value);
+            Memory<char> memory = new char[buffer.Length];
+            buffer.CopyTo(memory.Span);
+            return EnumerateTokens(memory, tokenizer);
+        }
+
+        private static IEnumerable<Token> EnumerateTokens(Memory<char> buffer, ITokenizer tokenizer)
+        {
+            while (!buffer.IsEmpty && tokenizer.TryParseToken(buffer.Span, true, out TokenType type, out int tokenLength))
+            {
+                Memory<char> value = new char[tokenLength];
+                buffer.Span[..tokenLength].CopyTo(value.Span);
+                yield return new Token(type, -1, -1, value);
+                buffer = buffer[tokenLength..];
+            }
         }
     }
 }

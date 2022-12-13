@@ -14,37 +14,18 @@ namespace FlexableCsvParser
         private const char LineFeedCharacter = '\n';
         private const char DoubleQuote = '"';
 
-        private int columnIndex, lineIndex;
-
-        private TokenState state = TokenState.Start;
-        private int charCount;
-
-        private int startOfTokenColumnIndex;
-        private int startOfTokenLineIndex;
-
-        public RFC4180Tokenizer(TextReader reader)
-            : base(reader, Delimiters.RFC4180)
+        public RFC4180Tokenizer()
+            : base(Delimiters.RFC4180)
         {
         }
 
-        protected override bool TryParseToken(ReadOnlySpan<char> buffer, bool endOfReader, out TokenType type, out int startOfTokenColumnIndex, out int startOfTokenLineIndex, out int charCount)
+        public override bool TryParseToken(ReadOnlySpan<char> buffer, bool endOfReader, out TokenType type, out int tokenLength)
         {
-            charCount = this.charCount;
+            var state = TokenState.Start;
+            tokenLength = 0;
 
-            if (charCount == 0)
+            foreach (var c in buffer)
             {
-                this.startOfTokenColumnIndex = startOfTokenColumnIndex = columnIndex;
-                this.startOfTokenLineIndex = startOfTokenLineIndex = lineIndex;
-            }
-            else
-            {
-                startOfTokenColumnIndex = this.startOfTokenColumnIndex;
-                startOfTokenLineIndex = this.startOfTokenLineIndex;
-            }
-
-            while (!buffer.IsEmpty)
-            {
-                char c = buffer[0];
                 switch (state)
                 {
                     case TokenState.Start:
@@ -62,7 +43,6 @@ namespace FlexableCsvParser
                         if (!char.IsWhiteSpace(c) || c == CariageReturn)
                         {
                             type = TokenType.WhiteSpace;
-                            ResetState();
                             return true;
                         }
                         break;
@@ -71,7 +51,6 @@ namespace FlexableCsvParser
                         if (c == Comma || c == DoubleQuote || char.IsWhiteSpace(c))
                         {
                             type = TokenType.Text;
-                            ResetState();
                             return true;
                         }
                         break;
@@ -101,81 +80,58 @@ namespace FlexableCsvParser
 
                     case TokenState.EndOfFieldDelimiter:
                         type = TokenType.FieldDelimiter;
-                        ResetState();
                         return true;
 
                     case TokenState.EndOfEndOfRecord:
                         type = TokenType.EndOfRecord;
-                        ResetState();
                         return true;
 
                     case TokenState.EndOfQuote:
                         type = TokenType.Quote;
-                        ResetState();
                         return true;
 
                     case TokenState.EndOfEscape:
                         type = TokenType.Escape;
-                        ResetState();
                         return true;
                 }
 
-                if (c == LineFeedCharacter)
-                {
-                    lineIndex++;
-                    columnIndex = 0;
-                }
-                else
-                {
-                    columnIndex++;
-                }
+                tokenLength++;
+            }
 
-                charCount++;
-                buffer = buffer[1..];
+            switch (state)
+            {
+                case TokenState.EndOfFieldDelimiter:
+                    type = TokenType.FieldDelimiter;
+                    return true;
+                case TokenState.EndOfEndOfRecord:
+                    type = TokenType.EndOfRecord;
+                    return true;
+                case TokenState.EndOfQuote:
+                    type = TokenType.Quote;
+                    return true;
+                case TokenState.EndOfEscape:
+                    type = TokenType.Escape;
+                    return true;
             }
 
             if (endOfReader)
             {
                 switch (state)
                 {
-                    case TokenState.EndOfFieldDelimiter:
-                        type = TokenType.FieldDelimiter;
-                        ResetState();
-                        return true;
-                    case TokenState.EndOfEndOfRecord:
-                        type = TokenType.EndOfRecord;
-                        ResetState();
-                        return true;
-                    case TokenState.EndOfQuote:
                     case TokenState.StartOfEscape:
                         type = TokenType.Quote;
-                        ResetState();
-                        return true;
-                    case TokenState.EndOfEscape:
-                        type = TokenType.Escape;
-                        ResetState();
                         return true;
                     case TokenState.WhiteSpace:
                         type = TokenType.WhiteSpace;
-                        ResetState();
                         return true;
                     case TokenState.Text:
                         type = TokenType.Text;
-                        ResetState();
                         return true;
                 }
             }
 
-            this.charCount = charCount;
             type = default;
             return false;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void ResetState()
-        {
-            state = TokenState.Start;
-            charCount = 0;
         }
     }
 

@@ -1,13 +1,20 @@
 ﻿using System;
-using System.Reflection.Emit;
+using System.Buffers;
 
 namespace FlexableCsvParser
 {
     internal class MemoryStringBuilder
     {
-        private Memory<char> buffer = new char[4096];
+        private Memory<char> buffer;
 
-        public int Length { get; private set; }
+        private int length;
+
+        public MemoryStringBuilder(int initialCapacity = 4096)
+        {
+            buffer = new char[initialCapacity];
+        }
+
+        public int Length => length;
 
         public ReadOnlySpan<char> Span
         {
@@ -17,12 +24,12 @@ namespace FlexableCsvParser
             }
         }
 
-        public void Append(ReadOnlySpan<char> chars)
+        public void Append(in ReadOnlySpan<char> chars)
         {
             EnsureCapacity(chars.Length);
 
             chars.CopyTo(buffer.Span[Length..]);
-            Length += chars.Length;
+            length += chars.Length;
         }
 
         private void EnsureCapacity(int charCount)
@@ -38,23 +45,24 @@ namespace FlexableCsvParser
 
                 var oldBuffer = buffer;
                 buffer = new char[newLength];
+
                 oldBuffer.CopyTo(buffer);
             }
         }
 
-        public void Append(MemoryStringBuilder builder)
-        {
-            Append(builder.Span);
-        }
-
         public void Clear()
         {
-            Length = 0;
+            length = 0;
         }
 
         public override string ToString()
         {
             return Span.ToString();
+        }
+
+        public static implicit operator ReadOnlySpan<char>(MemoryStringBuilder builder)
+        {
+            return builder.Span;
         }
     }
 }
