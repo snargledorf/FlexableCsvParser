@@ -40,7 +40,7 @@ namespace FlexableCsvParser.Test
         }
 
         [TestMethod]
-        public async Task SimpleRFC4180CsvQuotedFieldEndOfReader()
+        public void SimpleRFC4180CsvQuotedFieldEndOfReader()
         {
             const string Csv = "123, \"456,\"\"789\"\"\" ,\"ABC\"";
 
@@ -70,7 +70,7 @@ namespace FlexableCsvParser.Test
         }
 
         [TestMethod]
-        public async Task SimpleRFC4180CsvFlexable()
+        public void SimpleRFC4180CsvFlexable()
         {
             const string Csv = "123, \"456,\"\"789\"\"\" ,ABC";
 
@@ -98,7 +98,7 @@ namespace FlexableCsvParser.Test
         }
 
         [TestMethod]
-        public async Task SimpleRFC4180CsvFlexableQuotedFieldEndOfReader()
+        public void SimpleRFC4180CsvFlexableQuotedFieldEndOfReader()
         {
             const string Csv = "123, \"456,\"\"789\"\"\" ,\"ABC\"";
 
@@ -128,7 +128,7 @@ namespace FlexableCsvParser.Test
         }
 
         [TestMethod]
-        public async Task MultipleSharedDelimitersCsvFlexable()
+        public void MultipleSharedDelimitersCsvFlexable()
         {
             const string Csv = "123<Foo <FooB456<Foo789<FooB <FooABC<FooBar";
 
@@ -155,7 +155,7 @@ namespace FlexableCsvParser.Test
         }
 
         [TestMethod]
-        public async Task RFC4180EndOfRecordAtEndOfCsv()
+        public void RFC4180EndOfRecordAtEndOfCsv()
         {
             const string Csv = "123, \"456,\"\"789\"\"\" ,ABC\r\n";
 
@@ -184,7 +184,7 @@ namespace FlexableCsvParser.Test
         }
 
         [TestMethod]
-        public async Task FlexableEndOfRecordAtEndOfCsv()
+        public void FlexableEndOfRecordAtEndOfCsv()
         {
             const string Csv = "123, \"456,\"\"789\"\"\" ,ABC\r\n";
 
@@ -234,7 +234,7 @@ namespace FlexableCsvParser.Test
         }
 
         [TestMethod]
-        public async Task BlankQuoteAndEscape()
+        public void BlankQuoteAndEscape()
         {
             const string Csv = "123, \"456,\"\"789\"\"\" ,\"ABC\"";
 
@@ -258,7 +258,7 @@ namespace FlexableCsvParser.Test
         }
 
         [TestMethod]
-        public async Task BlankEscape()
+        public void BlankEscape()
         {
             const string Csv = "123, \"456,\"\"789\"\"\" ,\"ABC\"";
 
