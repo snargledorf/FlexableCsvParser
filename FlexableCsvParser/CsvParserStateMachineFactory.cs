@@ -102,7 +102,7 @@ namespace FlexableCsvParser
                 .Default(ParserState.EndOfField);
 
             builder.From(ParserState.LeadingEscape)
-                .When(TokenType.Quote, ParserState.QuotedFieldText) // Handles Foo,"""Bar""",Biz | Foo,""" Bar""",Biz | Foo,""", Bar""",Biz
+                .When(TokenType.Quote, ParserState.QuoteAfterLeadingEscape) // Handles Foo,"""Bar""",Biz | Foo,""" Bar""",Biz | Foo,""", Bar""",Biz
                 .When(TokenType.Escape, ParserState.EscapeAfterLeadingEscape) // Handles Foo,""""" Empty quotes",Biz
                 .When(TokenType.WhiteSpace, ParserState.QuotedFieldClosingQuoteTrailingWhiteSpace) // Handles Foo,"" ,Biz
                 .When(TokenType.Text, ParserState.UnexpectedToken)
@@ -111,10 +111,15 @@ namespace FlexableCsvParser
             builder.From(ParserState.EscapeAfterLeadingEscape) // Handles Foo,"""""",Biz
                 .When(TokenType.Escape, ParserState.EscapeAfterLeadingEscape) // Handles Foo,"""""",Biz
                 .When(TokenType.FieldDelimiter, ParserState.EndOfField) // Handles Foo,"""""",Biz
-                .When(TokenType.Quote, ParserState.QuotedFieldEscape)
+                .When(TokenType.Quote, ParserState.QuoteAfterLeadingEscape)
                 .When(TokenType.WhiteSpace, ParserState.QuotedFieldClosingQuoteTrailingWhiteSpace) //  Foo,"""" ,Biz
                 .When(TokenType.Text, ParserState.UnexpectedToken) // Foo,""""Bar,Biz
                 .Default(ParserState.EndOfField); // Foo,"""" | Foo,""""""
+
+            builder.From(ParserState.QuoteAfterLeadingEscape)
+                .When(TokenType.WhiteSpace, ParserState.QuotedFieldTrailingWhiteSpace) // Handles Foo,"" ,Biz
+                .GotoWhen(ParserState.UnexpectedToken, TokenType.Quote, TokenType.Escape)
+                .Default(ParserState.QuotedFieldText);
         }
     }
 }

@@ -20,5 +20,6 @@
         QuotedFieldClosingQuoteTrailingWhiteSpace,
         UnquotedFieldTrailingWhiteSpace,
         EscapeAfterLeadingEscape,
+        QuoteAfterLeadingEscape,
     }
 }

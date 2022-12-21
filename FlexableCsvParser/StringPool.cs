@@ -49,9 +49,6 @@ namespace FlexableCsvParser
         Entry[] entries;
 
         int count;
-        long uniqueLen;
-        long dupeLen;
-        long skipLen;
 
         /// <summary>
         /// Creates a new StringPool instance.
@@ -90,10 +87,7 @@ namespace FlexableCsvParser
             if (buffer == null) throw new ArgumentNullException(nameof(buffer));
             if (buffer.Length == 0) return string.Empty;
             if (buffer.Length > stringSizeLimit)
-            {
-                this.skipLen += buffer.Length;
-                return new string(buffer);
-            }
+                return buffer.ToString();
 
             var entries = this.entries;
             var hashCode = GetHashCode(buffer);
@@ -108,7 +102,6 @@ namespace FlexableCsvParser
                 if (e.hashCode == hashCode && buffer.Equals(e.str, StringComparison.Ordinal))
                 {
                     e.count++;
-                    this.dupeLen += buffer.Length;
                     return e.str;
                 }
 
@@ -119,7 +112,7 @@ namespace FlexableCsvParser
                 {
                     // protects against malicious inputs
                     // too many collisions give up and let the caller create the string.					
-                    return new string(buffer);
+                    return buffer.ToString();
                 }
             }
 
@@ -132,10 +125,9 @@ namespace FlexableCsvParser
             int index = count;
             this.count = count + 1;
 
-            var stringValue = new string(buffer);
+            var stringValue = buffer.ToString();
 
             ref Entry entry = ref entries![index];
-            this.uniqueLen += buffer.Length;
             entry.hashCode = hashCode;
             entry.count = 1;
             entry.next = bucket - 1;

@@ -29,21 +29,21 @@ namespace FlexableCsvParser
         private Memory<char> readBuffer = new char[4096];
         private int readBufferLength;
 
+        private bool endOfReader;
+        private int startOfRecordIndex;
+
+        private int currentFieldStartIndex;
+        private int escapedQuoteCount;
+
         private int fieldLength;
         private int leadingWhiteSpaceLength;
         private int possibleTrailingWhiteSpaceLength;
 
         private List<RecordFieldInfo> currentRecordFields;
+        private int expectedRecordFieldCount;
 
-        private int expectedRecordLength;
-        private bool endOfReader;
-        private int currentReadBufferIndex;
-
-        private int currentFieldStartIndex;
-        private int escapedQuoteCount;
-
-        private StringPool stringPool = new StringPool(128);
-        private int startOfRecordIndex;
+        private StringPool stringPool;
+        private int recordBufferObserved;
 
         public CsvParser(TextReader reader, int recordLength)
             : this(reader, recordLength, CsvParserConfig.Default)
@@ -69,12 +69,14 @@ namespace FlexableCsvParser
 
             parserStateMachine = CsvParserStateMachineFactory.BuildParserStateMachine();
 
-            expectedRecordLength = recordLength;
+            expectedRecordFieldCount = recordLength;
 
-            currentRecordFields = new List<RecordFieldInfo>(expectedRecordLength);
+            currentRecordFields = new List<RecordFieldInfo>(expectedRecordFieldCount);
 
             quote = config.Delimiters.Quote;
             escapeLength = config.Delimiters.Escape.Length;
+
+            stringPool = new(config.StringCacheMaxLength);
         }
 
         public ValueTask<int> ReadRecordAsync(Memory<string> record)
@@ -90,7 +92,7 @@ namespace FlexableCsvParser
         {
             if (Read())
             {
-                int bufferLength = Math.Min(record.Length, expectedRecordLength);
+                int bufferLength = Math.Min(record.Length, expectedRecordFieldCount);
                 if (bufferLength > FieldCount && config.IncompleteRecordHandling == IncompleteRecordHandling.TruncateRecord)
                     bufferLength = FieldCount;
 
@@ -118,7 +120,7 @@ namespace FlexableCsvParser
 
         public string GetString(int fieldIndex)
         {
-            if (fieldIndex >= expectedRecordLength)
+            if (fieldIndex >= expectedRecordFieldCount)
                 throw new ArgumentOutOfRangeException(nameof(fieldIndex));
 
             // TODO Cache values
@@ -152,9 +154,6 @@ namespace FlexableCsvParser
 
             ReadOnlySpan<char> fieldSpan = recordBuffer.Slice(fieldInfo.StartIndex, fieldInfo.Length);
 
-            if (fieldSpan.ToString() == "43")
-                System.Threading.Thread.Sleep(0);
-
             if (fieldInfo.EscapedQuoteCount == 0)
                 return stringPool.GetString(fieldSpan);
 
@@ -167,8 +166,11 @@ namespace FlexableCsvParser
             {
                 Span<char> strBufferSpan = strBuffer.AsSpan()[..fieldUpdatedLength];
                 ReadOnlySpan<char> resultSpan = strBufferSpan;
-                while (!fieldSpan.IsEmpty && tokenizer.TryParseToken(fieldSpan, true, out TokenType type, out int tokenLength))
+                while (!fieldSpan.IsEmpty)
                 {
+                    if (!tokenizer.TryParseToken(fieldSpan, true, out TokenType type, out int tokenLength))
+                        throw new Exception("Unable to parse field token");
+
                     if (type == TokenType.Escape)
                     {
                         quote.CopyTo(strBufferSpan);
@@ -197,14 +199,10 @@ namespace FlexableCsvParser
 
             currentRecordFields.Clear();
 
-            startOfRecordIndex = currentReadBufferIndex;
-            currentFieldStartIndex = 0;
+            startOfRecordIndex += recordBufferObserved;
+            recordBufferObserved = 0;
 
-            /*
-            recordBuffer.Span[currentBufferIndex..recordBufferLength].CopyTo(recordBuffer.Span);
-            recordBufferLength -= currentBufferIndex;
-            currentBufferIndex = 0;
-            */
+            currentFieldStartIndex = 0;
 
             do
             {
@@ -212,14 +210,17 @@ namespace FlexableCsvParser
                 if (recordBuffer.IsEmpty)
                     continue;
 
+                if (recordBuffer.StartsWith("1205319"))
+                    System.Threading.Thread.Sleep(0);
+
                 ParserState previousState;
-                ReadOnlySpan<char> nextTokenBuffer = recordBuffer[currentFieldStartIndex..];
 
-                while (tokenizer.TryParseToken(nextTokenBuffer, endOfReader, out TokenType type, out int length))
+                ReadOnlySpan<char> tokenBuffer = recordBuffer[recordBufferObserved..];
+                while (tokenizer.TryParseToken(tokenBuffer, endOfReader, out TokenType type, out int length))
                 {
-                    currentReadBufferIndex += length;
+                    tokenBuffer = tokenBuffer[length..];
 
-                    nextTokenBuffer = nextTokenBuffer[length..];
+                    recordBufferObserved = recordBuffer.Length - tokenBuffer.Length;
 
                     previousState = state;
 
@@ -236,17 +237,19 @@ namespace FlexableCsvParser
 
                             case ParserState.EndOfField:
                                 AddCurrentField();
-                                currentFieldStartIndex = recordBuffer.Length - nextTokenBuffer.Length;
-                                currentReadBufferIndex = startOfRecordIndex + currentFieldStartIndex;
+                                currentFieldStartIndex = recordBuffer.Length - tokenBuffer.Length;
                                 break;
 
                             case ParserState.EndOfRecord:
                                 CheckRecord();
-                                currentFieldStartIndex = recordBuffer.Length - nextTokenBuffer.Length;
-                                currentReadBufferIndex = startOfRecordIndex + currentFieldStartIndex;
+                                currentFieldStartIndex = recordBuffer.Length - tokenBuffer.Length;
                                 return true;
 
                             case ParserState.EscapeAfterLeadingEscape:
+                                escapedQuoteCount++;
+                                fieldLength += escapeLength;
+                                break;
+
                             case ParserState.QuotedFieldEscape:
                                 escapedQuoteCount++;
                                 fieldLength += length + leadingWhiteSpaceLength + possibleTrailingWhiteSpaceLength;
@@ -257,10 +260,10 @@ namespace FlexableCsvParser
                             case ParserState.LeadingWhiteSpace:
                                 // Only store the leading whitespace if there is a possiblity we might need it
                                 // IE. If trim leading isn't enabled
-                                if (!trimLeadingWhiteSpace)
-                                    leadingWhiteSpaceLength = length;
-                                else
+                                if (trimLeadingWhiteSpace)
                                     currentFieldStartIndex += length;
+                                else
+                                    leadingWhiteSpaceLength = length;
                                 break;
 
                             case ParserState.QuotedFieldTrailingWhiteSpace:
@@ -272,14 +275,25 @@ namespace FlexableCsvParser
                                     possibleTrailingWhiteSpaceLength = length;
                                 else
                                     fieldLength += length;
+
                                 break;
 
                             case ParserState.UnexpectedToken:
-                                throw new InvalidDataException($"Unexpected token: State = {previousState}, Buffer = {nextTokenBuffer}");
+                                throw new InvalidDataException($"Unexpected token: State = {previousState}, Buffer = {tokenBuffer}");
 
                             case ParserState.QuotedFieldClosingQuoteTrailingWhiteSpace:
                             case ParserState.QuotedFieldClosingQuote:
                                 // NoOp
+                                break;
+
+                            case ParserState.LeadingEscape:
+                                currentFieldStartIndex += leadingWhiteSpaceLength + quote.Length; // TODO Handle escapes that aren't "" (Ex. &quote;)
+                                leadingWhiteSpaceLength = 0;
+                                break;
+
+                            case ParserState.QuoteAfterLeadingEscape:
+                                escapedQuoteCount++;
+                                fieldLength += escapeLength;
                                 break;
 
                             default:
@@ -303,7 +317,7 @@ namespace FlexableCsvParser
                                 break;
 
                             default:
-                                throw new InvalidDataException($"Unexpected state: State = {state}, Buffer = {nextTokenBuffer}");
+                                throw new InvalidDataException($"Unexpected state: State = {state}, Buffer = {tokenBuffer}");
                         }
                     }
                 }
@@ -332,7 +346,6 @@ namespace FlexableCsvParser
                     this.readBuffer.Span[startOfRecordIndex..readBufferLength].CopyTo(this.readBuffer.Span);
 
                     readBufferLength -= startOfRecordIndex;
-                    currentReadBufferIndex -= startOfRecordIndex;
 
                     startOfRecordIndex = 0;
                 }
@@ -357,14 +370,16 @@ namespace FlexableCsvParser
                 endOfReader = charsRead < readBuffer.Length && reader.Peek() == -1;
             }
 
-            return currentReadBufferIndex != readBufferLength;
+            int currentReadIndex = startOfRecordIndex + recordBufferObserved;
+
+            return currentReadIndex != readBufferLength;
         }
 
         private void CheckRecord()
         {
             AddCurrentField();
 
-            if (FieldCount < expectedRecordLength && config.IncompleteRecordHandling == IncompleteRecordHandling.ThrowException)
+            if (FieldCount < expectedRecordFieldCount && config.IncompleteRecordHandling == IncompleteRecordHandling.ThrowException)
                 throw new InvalidDataException($"Record is incomplete"); // TODO output partial record
         }
 
