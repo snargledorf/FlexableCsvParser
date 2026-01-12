@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="FlexableCsvParser.Test/FlexableCsvParser.Test.csproj" />
+  <Project Path="FlexableCsvParser/FlexableCsvParser.csproj" />
+</Solution>

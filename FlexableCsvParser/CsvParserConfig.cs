@@ -2,7 +2,7 @@
 {
     public sealed class CsvParserConfig
     {
-        public static readonly CsvParserConfig RFC4180 = new CsvParserConfig(Delimiters.RFC4180);
+        public static readonly CsvParserConfig RFC4180 = new(Delimiters.RFC4180);
         public static readonly CsvParserConfig Default = RFC4180;
 
         public CsvParserConfig()

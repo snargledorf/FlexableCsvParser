@@ -49,7 +49,7 @@ namespace FlexableCsvParser.Test
                 "ABC"
             };
 
-            var parser = new CsvParser(new StringReader(Csv), expectedRecord.Length, new("<Foo", "<FooBar", "<FooB"));
+            var parser = new CsvParser(new StringReader(Csv), expectedRecord.Length, new CsvParserConfig("<Foo", "<FooBar", "<FooB"));
 
             var record = new string[expectedRecord.Length];
             int fieldsRead = await parser.ReadRecordAsync(record).ConfigureAwait(false);

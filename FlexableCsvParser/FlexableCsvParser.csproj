@@ -1,7 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net7.0</TargetFramework>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <PackageProjectUrl>https://github.com/snargledorf/FlexableCsvParser</PackageProjectUrl>
     <RepositoryUrl>https://github.com/snargledorf/FlexableCsvParser</RepositoryUrl>
@@ -13,6 +12,9 @@
     <Description>CSV parser that supports any type of delimiter</Description>
     <Version>1.1.0</Version>
     <Company>snargledorf</Company>
+    <TargetFrameworks>net10.0;net9.0;net8.0</TargetFrameworks>
+    <LangVersion>default</LangVersion>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
@@ -23,7 +25,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="FastState" Version="1.0.0" />
+    <PackageReference Include="SwiftState" Version="2.0.0" />
+    <PackageReference Include="Tokensharp" Version="3.0.3" />
   </ItemGroup>
 
 </Project>

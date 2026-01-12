@@ -1,125 +1,151 @@
-﻿using FastState;
+﻿using System.Collections.Generic;
+using SwiftState;
+using Tokensharp;
 
 namespace FlexableCsvParser
 {
     internal static class CsvParserStateMachineFactory
     {
-        internal static StateMachine<ParserState, TokenType> BuildParserStateMachine()
+        internal static State<TokenType<CsvTokens>, ParserState> BuildParserStateMachine()
         {
-            return new StateMachine<ParserState, TokenType>(builder =>
-            {
-                BuildStartOfFieldTransitions(builder);
+            var startStateBuilder = new StateBuilder<TokenType<CsvTokens>, ParserState>(ParserState.Start);
+            
+            BuildStartOfFieldTransitions(startStateBuilder);
+            
+            IStateBuilder<TokenType<CsvTokens>, ParserState> endOfFieldBuilder = startStateBuilder.GetBuilderForState(ParserState.EndOfField);
+            BuildStartOfFieldTransitions(endOfFieldBuilder);
+            
+            IStateBuilder<TokenType<CsvTokens>, ParserState> endOfRecordBuilder = startStateBuilder.GetBuilderForState(ParserState.EndOfRecord);
+            BuildStartOfFieldTransitions(endOfRecordBuilder);
 
-                BuildUnquotedFieldTransitions(builder);
-                BuildLeadingWhiteSpaceTransitions(builder);
-                BuildQuotedFieldTransitions(builder);
-            });
+            BuildUnquotedFieldTransitions(startStateBuilder);
+            BuildLeadingWhiteSpaceTransitions(startStateBuilder);
+            BuildQuotedFieldTransitions(startStateBuilder);
+            
+            return startStateBuilder.Build();
         }
 
-        private static void BuildStartOfFieldTransitions(IStateMachineTransitionMapBuilder<ParserState, TokenType> builder)
+        private static void BuildStartOfFieldTransitions(IStateBuilder<TokenType<CsvTokens>, ParserState> builder)
         {
-            BuildStartOfFieldTransitions(builder.From(ParserState.Start));
-            BuildStartOfFieldTransitions(builder.From(ParserState.EndOfField));
-            BuildStartOfFieldTransitions(builder.From(ParserState.EndOfRecord));
+            builder.GotoWhen(ParserState.UnquotedFieldText, CsvTokens.Text, CsvTokens.Number);
+            builder.When(CsvTokens.Quote, ParserState.QuotedFieldOpenQuote);
+            builder.When(CsvTokens.WhiteSpace, ParserState.LeadingWhiteSpace);
+            builder.When(CsvTokens.FieldDelimiter, ParserState.EndOfField);
+            builder.When(CsvTokens.EndOfRecord, ParserState.EndOfRecord);
+            //.When(TokenType.EndOfReader, ParserState.EndOfReader)
+            builder.When(CsvTokens.Escape, ParserState.LeadingEscape);
         }
 
-        private static void BuildStartOfFieldTransitions(IStateTransitionMapBuilder<ParserState, TokenType> builder)
+        private static void BuildUnquotedFieldTransitions(IStateBuilder<TokenType<CsvTokens>, ParserState> builder)
         {
-            builder
-                .When(TokenType.Text, ParserState.UnquotedFieldText)
-                .When(TokenType.Quote, ParserState.QuotedFieldOpenQuote)
-                .When(TokenType.WhiteSpace, ParserState.LeadingWhiteSpace)
-                .When(TokenType.FieldDelimiter, ParserState.EndOfField)
-                .When(TokenType.EndOfRecord, ParserState.EndOfRecord)
-                //.When(TokenType.EndOfReader, ParserState.EndOfReader)
-                .When(TokenType.Escape, ParserState.LeadingEscape);
+            IStateBuilder<TokenType<CsvTokens>, ParserState> unquotedFieldTextBuilder = builder.GetBuilderForState(ParserState.UnquotedFieldText);
+            unquotedFieldTextBuilder.When(CsvTokens.FieldDelimiter, ParserState.EndOfField);
+            unquotedFieldTextBuilder.When(CsvTokens.EndOfRecord, ParserState.EndOfRecord);
+
+            IStateBuilder<TokenType<CsvTokens>, ParserState> unquotedFieldTrailingWhiteSpaceBuilder = unquotedFieldTextBuilder.When(CsvTokens.WhiteSpace, ParserState.UnquotedFieldTrailingWhiteSpace);
+
+            unquotedFieldTrailingWhiteSpaceBuilder.When(CsvTokens.Text, ParserState.UnquotedFieldText);
+            unquotedFieldTrailingWhiteSpaceBuilder.When(CsvTokens.FieldDelimiter, ParserState.EndOfField);
+            unquotedFieldTrailingWhiteSpaceBuilder.When(CsvTokens.EndOfRecord, ParserState.EndOfRecord);
+            unquotedFieldTrailingWhiteSpaceBuilder.GotoWhen(ParserState.UnexpectedToken, CsvTokens.WhiteSpace, CsvTokens.Escape, CsvTokens.Quote);
+            unquotedFieldTrailingWhiteSpaceBuilder.Default(ParserState.EndOfField);
         }
 
-        private static void BuildUnquotedFieldTransitions(IStateMachineTransitionMapBuilder<ParserState, TokenType> builder)
+        private static void BuildLeadingWhiteSpaceTransitions(IStateBuilder<TokenType<CsvTokens>, ParserState> builder)
         {
-            builder.From(ParserState.UnquotedFieldText)
-                .When(TokenType.FieldDelimiter, ParserState.EndOfField)
-                .When(TokenType.WhiteSpace, ParserState.UnquotedFieldTrailingWhiteSpace)
-                .When(TokenType.EndOfRecord, ParserState.EndOfRecord);
-
-            builder.From(ParserState.UnquotedFieldTrailingWhiteSpace)
-                .When(TokenType.Text, ParserState.UnquotedFieldText)
-                .When(TokenType.FieldDelimiter, ParserState.EndOfField)
-                .When(TokenType.EndOfRecord, ParserState.EndOfRecord)
-                .GotoWhen(ParserState.UnexpectedToken, TokenType.WhiteSpace, TokenType.Escape, TokenType.Quote)
-                .Default(ParserState.EndOfField);
+            IStateBuilder<TokenType<CsvTokens>, ParserState> leadingWhiteSpaceBuilder = builder.GetBuilderForState(ParserState.LeadingWhiteSpace);
+            
+            leadingWhiteSpaceBuilder.When(CsvTokens.Text, ParserState.UnquotedFieldText);
+            leadingWhiteSpaceBuilder.When(CsvTokens.Quote, ParserState.QuotedFieldOpenQuote);
+            leadingWhiteSpaceBuilder.When(CsvTokens.FieldDelimiter, ParserState.EndOfField);
+            leadingWhiteSpaceBuilder.When(CsvTokens.EndOfRecord, ParserState.EndOfRecord);
+            leadingWhiteSpaceBuilder.When(CsvTokens.Escape, ParserState.LeadingEscape);
+            leadingWhiteSpaceBuilder.When(CsvTokens.WhiteSpace, ParserState.UnexpectedToken);
+            leadingWhiteSpaceBuilder.Default(ParserState.EndOfField);
         }
 
-        private static void BuildLeadingWhiteSpaceTransitions(IStateMachineTransitionMapBuilder<ParserState, TokenType> builder)
+        private static void BuildQuotedFieldTransitions(IStateBuilder<TokenType<CsvTokens>, ParserState> builder)
         {
-            builder.From(ParserState.LeadingWhiteSpace)
-                .When(TokenType.Text, ParserState.UnquotedFieldText)
-                .When(TokenType.Quote, ParserState.QuotedFieldOpenQuote)
-                .When(TokenType.FieldDelimiter, ParserState.EndOfField)
-                .When(TokenType.EndOfRecord, ParserState.EndOfRecord)
-                .When(TokenType.Escape, ParserState.LeadingEscape)
-                .When(TokenType.WhiteSpace, ParserState.UnexpectedToken)
-                .Default(ParserState.EndOfField);
-        }
+            IStateBuilder<TokenType<CsvTokens>, ParserState> quotedFieldOpenQuoteBuilder =
+                builder.GetBuilderForState(ParserState.QuotedFieldOpenQuote);
+            
+            IStateBuilder<TokenType<CsvTokens>, ParserState> leadingEscapeBuilder =
+                builder.GetBuilderForState(ParserState.LeadingEscape);
 
-        private static void BuildQuotedFieldTransitions(IStateMachineTransitionMapBuilder<ParserState, TokenType> builder)
-        {
-            builder.From(ParserState.QuotedFieldOpenQuote)
-                .When(TokenType.Quote, ParserState.QuotedFieldClosingQuote)
-                .When(TokenType.Escape, ParserState.QuotedFieldEscape)
-                .When(TokenType.WhiteSpace, ParserState.QuotedFieldLeadingWhiteSpace)
-                .Default(ParserState.QuotedFieldText);
+            IStateBuilder<TokenType<CsvTokens>, ParserState> quotedFieldClosingQuoteBuilder =
+                quotedFieldOpenQuoteBuilder.When(CsvTokens.Quote, ParserState.QuotedFieldClosingQuote);
+            
+            IStateBuilder<TokenType<CsvTokens>, ParserState> quotedFieldEscapeBuilder =
+                quotedFieldOpenQuoteBuilder.When(CsvTokens.Escape, ParserState.QuotedFieldEscape);
+            
+            IStateBuilder<TokenType<CsvTokens>, ParserState> quotedFieldLeadingWhiteSpaceBuilder =
+                quotedFieldOpenQuoteBuilder.When(CsvTokens.WhiteSpace, ParserState.QuotedFieldLeadingWhiteSpace);
+            
+            IStateBuilder<TokenType<CsvTokens>, ParserState> quotedFieldTextBuilder =
+                quotedFieldOpenQuoteBuilder.Default(ParserState.QuotedFieldText);
 
-            builder.From(ParserState.QuotedFieldText)
-                .When(TokenType.Quote, ParserState.QuotedFieldClosingQuote)
-                .When(TokenType.Escape, ParserState.QuotedFieldEscape)
-                .When(TokenType.WhiteSpace, ParserState.QuotedFieldTrailingWhiteSpace);
+            quotedFieldTextBuilder.When(CsvTokens.Quote, ParserState.QuotedFieldClosingQuote);
+            quotedFieldTextBuilder.When(CsvTokens.Escape, ParserState.QuotedFieldEscape);
+            
+            IStateBuilder<TokenType<CsvTokens>, ParserState> quotedFieldTrailingWhiteSpaceBuilder =
+                quotedFieldTextBuilder.When(CsvTokens.WhiteSpace, ParserState.QuotedFieldTrailingWhiteSpace);
 
-            builder.From(ParserState.QuotedFieldEscape)
-                .When(TokenType.Quote, ParserState.QuotedFieldClosingQuote)
-                .When(TokenType.Escape, ParserState.QuotedFieldEscape)
-                .Default(ParserState.QuotedFieldText);
+            quotedFieldEscapeBuilder.When(CsvTokens.Quote, ParserState.QuotedFieldClosingQuote);
+            quotedFieldEscapeBuilder.When(CsvTokens.Escape, ParserState.QuotedFieldEscape);
+            quotedFieldEscapeBuilder.Default(ParserState.QuotedFieldText);
 
-            builder.From(ParserState.QuotedFieldLeadingWhiteSpace)
-                .When(TokenType.Quote, ParserState.QuotedFieldClosingQuote)
-                .When(TokenType.Escape, ParserState.QuotedFieldEscape)
-                .Default(ParserState.QuotedFieldText);
+            quotedFieldLeadingWhiteSpaceBuilder.When(CsvTokens.Quote, ParserState.QuotedFieldClosingQuote);
+            quotedFieldLeadingWhiteSpaceBuilder.When(CsvTokens.Escape, ParserState.QuotedFieldEscape);
+            quotedFieldLeadingWhiteSpaceBuilder.Default(ParserState.QuotedFieldText);
 
-            builder.From(ParserState.QuotedFieldTrailingWhiteSpace)
-                .When(TokenType.Quote, ParserState.QuotedFieldClosingQuote)
-                .When(TokenType.Escape, ParserState.QuotedFieldEscape)
-                .Default(ParserState.QuotedFieldText);
+            quotedFieldTrailingWhiteSpaceBuilder.When(CsvTokens.Quote, ParserState.QuotedFieldClosingQuote);
+            quotedFieldTrailingWhiteSpaceBuilder.When(CsvTokens.Escape, ParserState.QuotedFieldEscape);
+            quotedFieldTrailingWhiteSpaceBuilder.Default(ParserState.QuotedFieldText);
 
-            builder.From(ParserState.QuotedFieldClosingQuote)
-                .When(TokenType.WhiteSpace, ParserState.QuotedFieldClosingQuoteTrailingWhiteSpace)
-                .When(TokenType.EndOfRecord, ParserState.EndOfRecord)
-                .GotoWhen(ParserState.UnexpectedToken, TokenType.Text, TokenType.Escape, TokenType.Quote)
-                .Default(ParserState.EndOfField);
+            IStateBuilder<TokenType<CsvTokens>, ParserState> quotedFieldClosingQuoteTrailingWhiteSpaceBuilder =
+                quotedFieldClosingQuoteBuilder.When(CsvTokens.WhiteSpace,
+                    ParserState.QuotedFieldClosingQuoteTrailingWhiteSpace);
+            
+            quotedFieldClosingQuoteBuilder.When(CsvTokens.EndOfRecord, ParserState.EndOfRecord);
+            quotedFieldClosingQuoteBuilder.GotoWhen(ParserState.UnexpectedToken, CsvTokens.Text, CsvTokens.Escape,
+                CsvTokens.Quote);
+            quotedFieldClosingQuoteBuilder.Default(ParserState.EndOfField);
 
-            builder.From(ParserState.QuotedFieldClosingQuoteTrailingWhiteSpace)
-                .When(TokenType.EndOfRecord, ParserState.EndOfRecord)
-                .GotoWhen(ParserState.UnexpectedToken, TokenType.Text, TokenType.WhiteSpace, TokenType.Escape, TokenType.Quote)
-                .Default(ParserState.EndOfField);
+            quotedFieldClosingQuoteTrailingWhiteSpaceBuilder.When(CsvTokens.EndOfRecord, ParserState.EndOfRecord);
+            quotedFieldClosingQuoteTrailingWhiteSpaceBuilder.GotoWhen(ParserState.UnexpectedToken, CsvTokens.Text,
+                CsvTokens.WhiteSpace, CsvTokens.Escape, CsvTokens.Quote);
+            quotedFieldClosingQuoteTrailingWhiteSpaceBuilder.Default(ParserState.EndOfField);
 
-            builder.From(ParserState.LeadingEscape)
-                .When(TokenType.Quote, ParserState.QuoteAfterLeadingEscape) // Handles Foo,"""Bar""",Biz | Foo,""" Bar""",Biz | Foo,""", Bar""",Biz
-                .When(TokenType.Escape, ParserState.EscapeAfterLeadingEscape) // Handles Foo,""""" Empty quotes",Biz
-                .When(TokenType.WhiteSpace, ParserState.QuotedFieldClosingQuoteTrailingWhiteSpace) // Handles Foo,"" ,Biz
-                .When(TokenType.Text, ParserState.UnexpectedToken)
-                .Default(ParserState.EndOfField); // Handles Foo,"",Biz | Foo,Bar,""
+            leadingEscapeBuilder.When(CsvTokens.Quote,
+                ParserState
+                    .QuoteAfterLeadingEscape); // Handles Foo,"""Bar""",Biz | Foo,""" Bar""",Biz | Foo,""", Bar""",Biz
+            
+            IStateBuilder<TokenType<CsvTokens>, ParserState> escapeAfterLeadingEscapeBuilder =
+                leadingEscapeBuilder.When(CsvTokens.Escape,
+                    ParserState.EscapeAfterLeadingEscape); // Handles Foo,""""" Empty quotes",Biz
+            
+            leadingEscapeBuilder.When(CsvTokens.WhiteSpace,
+                ParserState.QuotedFieldClosingQuoteTrailingWhiteSpace); // Handles Foo,"" ,Biz
+            leadingEscapeBuilder.When(CsvTokens.Text, ParserState.UnexpectedToken);
+            leadingEscapeBuilder.Default(ParserState.EndOfField); // Handles Foo,"",Biz | Foo,Bar,""
 
-            builder.From(ParserState.EscapeAfterLeadingEscape) // Handles Foo,"""""",Biz
-                .When(TokenType.Escape, ParserState.EscapeAfterLeadingEscape) // Handles Foo,"""""",Biz
-                .When(TokenType.FieldDelimiter, ParserState.EndOfField) // Handles Foo,"""""",Biz
-                .When(TokenType.Quote, ParserState.QuoteAfterLeadingEscape)
-                .When(TokenType.WhiteSpace, ParserState.QuotedFieldClosingQuoteTrailingWhiteSpace) //  Foo,"""" ,Biz
-                .When(TokenType.Text, ParserState.UnexpectedToken) // Foo,""""Bar,Biz
-                .Default(ParserState.EndOfField); // Foo,"""" | Foo,""""""
+            escapeAfterLeadingEscapeBuilder.When(CsvTokens.Escape,
+                ParserState.EscapeAfterLeadingEscape); // Handles Foo,"""""",Biz
+            escapeAfterLeadingEscapeBuilder.When(CsvTokens.FieldDelimiter,
+                ParserState.EndOfField); // Handles Foo,"""""",Biz
+            
+            IStateBuilder<TokenType<CsvTokens>, ParserState> quoteAfterLeadingEscapeBuilder =
+                escapeAfterLeadingEscapeBuilder.When(CsvTokens.Quote, ParserState.QuoteAfterLeadingEscape);
+            
+            escapeAfterLeadingEscapeBuilder.When(CsvTokens.WhiteSpace,
+                ParserState.QuotedFieldClosingQuoteTrailingWhiteSpace); //  Foo,"""" ,Biz
+            escapeAfterLeadingEscapeBuilder.When(CsvTokens.Text, ParserState.UnexpectedToken); // Foo,""""Bar,Biz
+            escapeAfterLeadingEscapeBuilder.Default(ParserState.EndOfField); // Foo,"""" | Foo,""""""
 
-            builder.From(ParserState.QuoteAfterLeadingEscape)
-                .When(TokenType.WhiteSpace, ParserState.QuotedFieldTrailingWhiteSpace) // Handles Foo,"" ,Biz
-                .GotoWhen(ParserState.UnexpectedToken, TokenType.Quote, TokenType.Escape)
-                .Default(ParserState.QuotedFieldText);
+            quoteAfterLeadingEscapeBuilder.When(CsvTokens.WhiteSpace,
+                ParserState.QuotedFieldTrailingWhiteSpace); // Handles Foo,"" ,Biz
+            quoteAfterLeadingEscapeBuilder.GotoWhen(ParserState.UnexpectedToken, CsvTokens.Quote, CsvTokens.Escape);
+            quoteAfterLeadingEscapeBuilder.Default(ParserState.QuotedFieldText);
         }
     }
 }
