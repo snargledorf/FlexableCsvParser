@@ -1,10 +1,11 @@
-﻿using BenchmarkDotNet.Attributes;
+﻿using System.IO;
 using System.Text;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace FlexableCsvParser.Benchmark
+namespace FlexableCsvParser.Test
 {
-    [MemoryDiagnoser]
-    public class CsvParserBenchmarks
+    [TestClass]
+    public class ProfileTests
     {
         private const int RecordCount = 1000;
         private const int FieldCount = 5;
@@ -12,8 +13,7 @@ namespace FlexableCsvParser.Benchmark
         private StringReader? _stringReader;
         private CsvParser? _parser;
 
-        [GlobalSetup]
-        public void Setup()
+        public ProfileTests()
         {
             var sb = new StringBuilder();
             for (int i = 0; i < RecordCount; i++)
@@ -27,22 +27,11 @@ namespace FlexableCsvParser.Benchmark
                 sb.AppendLine();
             }
             _csvData = sb.ToString();
-        }
-
-        [IterationSetup]
-        public void SetupParser()
-        {
             _stringReader = new StringReader(_csvData!);
             _parser = new CsvParser(_stringReader, FieldCount);
         }
 
-        [IterationCleanup]
-        public void CleanupParser()
-        {
-            _stringReader!.Dispose();
-        }
-
-        [Benchmark]
+        [TestMethod]
         public void ParseCsv()
         {
             while (_parser!.Read()) ;
