@@ -31,10 +31,12 @@ namespace FlexableCsvParser.Benchmark
         public void ParseCsv()
         {
             using var reader = new StringReader(_csvData);
-            var parser = new CsvParser(reader, new CsvParserConfig(recordLength: FieldCount));
+            var parser = new CsvParser(reader, FieldCount);
             var buffer = new string[FieldCount];
 
-            while (parser.TryReadRecord(out buffer)) ;
+            while (parser.Read())
+                for (int i = 0; i < FieldCount; i++)
+                    buffer[i] = parser.GetString(i);
         }
     }
 }
