@@ -6,6 +6,8 @@
 /.idea.FlexableCsvParser.iml
 /modules.xml
 /contentModel.xml
+# Ignored default folder with query files
+/queries/
 # Editor-based HTTP Client requests
 /httpRequests/
 # Datasource local storage ignored files
