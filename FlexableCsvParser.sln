@@ -5,6 +5,8 @@ VisualStudioVersion = 17.0.32112.339
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlexableCsvParser", "FlexableCsvParser\FlexableCsvParser.csproj", "{EDC09EB9-FF52-4B5A-B4D6-BAAF39F79F3B}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TestHarness", "TestHarness\TestHarness.csproj", "{6BAD8C9A-2E35-4FF3-91AA-2BE74CFE4599}"
+EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlexableCsvParser.Test", "FlexableCsvParser.Test\FlexableCsvParser.Test.csproj", "{FE1D8C3D-74B0-4300-A218-5CF7D58084FE}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlexableCsvParser.Benchmark", "FlexableCsvParser.Benchmark\FlexableCsvParser.Benchmark.csproj", "{3FAE016E-D31C-42FA-AA57-CF2F1476F72D}"
@@ -19,6 +21,10 @@ Global
 		{EDC09EB9-FF52-4B5A-B4D6-BAAF39F79F3B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EDC09EB9-FF52-4B5A-B4D6-BAAF39F79F3B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EDC09EB9-FF52-4B5A-B4D6-BAAF39F79F3B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6BAD8C9A-2E35-4FF3-91AA-2BE74CFE4599}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6BAD8C9A-2E35-4FF3-91AA-2BE74CFE4599}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6BAD8C9A-2E35-4FF3-91AA-2BE74CFE4599}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6BAD8C9A-2E35-4FF3-91AA-2BE74CFE4599}.Release|Any CPU.Build.0 = Release|Any CPU
 		{FE1D8C3D-74B0-4300-A218-5CF7D58084FE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{FE1D8C3D-74B0-4300-A218-5CF7D58084FE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FE1D8C3D-74B0-4300-A218-5CF7D58084FE}.Release|Any CPU.ActiveCfg = Release|Any CPU
