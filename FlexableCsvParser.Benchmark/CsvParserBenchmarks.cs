@@ -9,8 +9,8 @@ namespace FlexableCsvParser.Benchmark
         private const int RecordCount = 1000;
         private const int FieldCount = 5;
         private string? _csvData;
-        private StringReader? _stringReader;
-        private CsvParser? _parser;
+
+        private CsvParserConfig? _config;
 
         [GlobalSetup]
         public void Setup()
@@ -27,25 +27,16 @@ namespace FlexableCsvParser.Benchmark
                 sb.AppendLine();
             }
             _csvData = sb.ToString();
-        }
 
-        [IterationSetup]
-        public void SetupParser()
-        {
-            _stringReader = new StringReader(_csvData!);
-            _parser = new CsvParser(_stringReader, FieldCount);
-        }
-
-        [IterationCleanup]
-        public void CleanupParser()
-        {
-            _stringReader!.Dispose();
+            _config = new CsvParserConfig();
         }
 
         [Benchmark]
         public void ParseCsv()
         {
-            while (_parser!.Read()) ;
+            using var stringReader = new StringReader(_csvData!);
+            var parser = new CsvParser(stringReader, FieldCount, _config!);
+            while (parser.Read()) ;
         }
     }
 }

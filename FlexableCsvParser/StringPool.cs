@@ -9,15 +9,15 @@ namespace FlexableCsvParser
 {
     public sealed class StringPool
     {
-        const int DefaultCapacity = 64;
-        const int DefaultSizeLimit = 32;
-        const int CollisionLimit = 8;
+        private const int DefaultCapacity = 64;
+        private const int DefaultSizeLimit = 32;
+        private const int CollisionLimit = 8;
 
         // This is a greatly-simplified HashSet<string> that only allows additions.
         // and accepts char[] instead of string.
 
         // An extremely simple, and hopefully fast, hash algorithm.
-        static uint GetHashCode(ReadOnlySpan<char> buffer)
+        private static uint GetHashCode(ReadOnlySpan<char> buffer)
         {
             uint hash = 0;
             foreach (char c in buffer)
@@ -26,29 +26,29 @@ namespace FlexableCsvParser
             return hash;
         }
 
-        IEnumerable<(string str, int count)> GetUsage()
+        private IEnumerable<(string str, int count)> GetUsage()
         {
-            for (int i = 0; i < this.buckets.Length; i++)
+            for (var i = 0; i < _buckets.Length; i++)
             {
-                var b = buckets[i];
+                int b = _buckets[i];
                 if (b != 0)
                 {
-                    var idx = b - 1;
-                    while ((uint)idx < entries.Length)
+                    int idx = b - 1;
+                    while ((uint)idx < _entries.Length)
                     {
-                        var e = this.entries[idx];
-                        yield return (e.str, e.count);
-                        idx = e.next;
+                        Entry e = _entries[idx];
+                        yield return (e.Str, e.Count);
+                        idx = e.Next;
                     }
                 }
             }
         }
 
-        readonly int stringSizeLimit;
-        int[] buckets; // contains index into entries offset by -1. So that 0 (default) means empty bucket.
-        Entry[] entries;
+        private readonly int _stringSizeLimit;
+        private int[] _buckets; // contains index into entries offset by -1. So that 0 (default) means empty bucket.
+        private Entry[] _entries;
 
-        int count;
+        private int _count;
 
         /// <summary>
         /// Creates a new StringPool instance.
@@ -66,14 +66,14 @@ namespace FlexableCsvParser
         public StringPool(int stringSizeLimit)
         {
             int size = GetSize(DefaultCapacity);
-            this.stringSizeLimit = stringSizeLimit;
-            this.buckets = new int[size];
-            this.entries = new Entry[size];
+            _stringSizeLimit = stringSizeLimit;
+            _buckets = new int[size];
+            _entries = new Entry[size];
         }
 
-        static int GetSize(int capacity)
+        private static int GetSize(int capacity)
         {
-            var size = DefaultCapacity;
+            int size = DefaultCapacity;
             while (size < capacity)
                 size = size * 2;
             return size;
@@ -84,13 +84,14 @@ namespace FlexableCsvParser
         /// </summary>
         public string GetString(ReadOnlySpan<char> buffer)
         {
-            if (buffer == null) throw new ArgumentNullException(nameof(buffer));
-            if (buffer.Length == 0) return string.Empty;
-            if (buffer.Length > stringSizeLimit)
+            if (buffer.IsEmpty) 
+                return string.Empty;
+            
+            if (buffer.Length > _stringSizeLimit)
                 return buffer.ToString();
 
-            var entries = this.entries;
-            var hashCode = GetHashCode(buffer);
+            Entry[] entries = _entries;
+            uint hashCode = GetHashCode(buffer);
 
             uint collisionCount = 0;
             ref int bucket = ref GetBucket(hashCode);
@@ -98,14 +99,14 @@ namespace FlexableCsvParser
 
             while ((uint)i < (uint)entries.Length)
             {
-                ref var e = ref entries[i];
-                if (e.hashCode == hashCode && buffer.Equals(e.str, StringComparison.Ordinal))
+                ref Entry e = ref entries[i];
+                if (e.HashCode == hashCode && buffer.Equals(e.Str, StringComparison.Ordinal))
                 {
-                    e.count++;
-                    return e.str;
+                    e.Count++;
+                    return e.Str;
                 }
 
-                i = e.next;
+                i = e.Next;
 
                 collisionCount++;
                 if (collisionCount > CollisionLimit)
@@ -116,66 +117,66 @@ namespace FlexableCsvParser
                 }
             }
 
-            int count = this.count;
+            int count = _count;
             if (count == entries.Length)
             {
                 entries = Resize();
                 bucket = ref GetBucket(hashCode);
             }
             int index = count;
-            this.count = count + 1;
+            _count = count + 1;
 
             var stringValue = buffer.ToString();
 
-            ref Entry entry = ref entries![index];
-            entry.hashCode = hashCode;
-            entry.count = 1;
-            entry.next = bucket - 1;
-            entry.str = stringValue;
+            ref Entry entry = ref entries[index];
+            entry.HashCode = hashCode;
+            entry.Count = 1;
+            entry.Next = bucket - 1;
+            entry.Str = stringValue;
 
             bucket = index + 1; // bucket is an int ref
 
             return stringValue;
         }
 
-        Entry[] Resize()
+        private Entry[] Resize()
         {
-            var newSize = GetSize(this.count + 1);
+            int newSize = GetSize(_count + 1);
 
             var entries = new Entry[newSize];
 
-            int count = this.count;
-            Array.Copy(this.entries, entries, count);
+            int count = _count;
+            Array.Copy(_entries, entries, count);
 
-            this.buckets = new int[newSize];
+            _buckets = new int[newSize];
 
-            for (int i = 0; i < count; i++)
+            for (var i = 0; i < count; i++)
             {
-                if (entries[i].next >= -1)
+                if (entries[i].Next >= -1)
                 {
-                    ref int bucket = ref GetBucket(entries[i].hashCode);
-                    entries[i].next = bucket - 1;
+                    ref int bucket = ref GetBucket(entries[i].HashCode);
+                    entries[i].Next = bucket - 1;
                     bucket = i + 1;
                 }
             }
 
-            this.entries = entries;
+            _entries = entries;
             return entries;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        ref int GetBucket(uint hashCode)
+        private ref int GetBucket(uint hashCode)
         {
-            int[] buckets = this.buckets;
+            int[] buckets = _buckets;
             return ref buckets[hashCode & ((uint)buckets.Length - 1)];
         }
 
-        struct Entry
+        private struct Entry
         {
-            public uint hashCode;
-            public int next;
-            public int count;
-            public string str;
+            public uint HashCode;
+            public int Next;
+            public int Count;
+            public string Str;
         }
     }
 }

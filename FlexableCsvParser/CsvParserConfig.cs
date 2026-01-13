@@ -1,4 +1,7 @@
-﻿namespace FlexableCsvParser
+﻿using Tokensharp;
+using Tokensharp.StateMachine;
+
+namespace FlexableCsvParser
 {
     public sealed class CsvParserConfig
     {
@@ -36,11 +39,31 @@
             IncompleteRecordHandling = incompleteRecordHandling;
             WhiteSpaceTrimming = whiteSpaceTrimming;
             StringCacheMaxLength = stringCacheMaxLength;
+            
+            TokenConfiguration<CsvTokens> tokenConfiguration;
+            if (!Delimiters.AreRFC4180Compliant)
+            {
+                tokenConfiguration = new TokenConfigurationBuilder<CsvTokens>()
+                {
+                    { Delimiters.Field, CsvTokens.FieldDelimiter },
+                    { Delimiters.EndOfRecord, CsvTokens.EndOfRecord },
+                    { Delimiters.Quote, CsvTokens.Quote },
+                    { Delimiters.Escape, CsvTokens.Escape },
+                }.Build();
+            }
+            else
+            {
+                tokenConfiguration = CsvTokens.Configuration;
+            }
+            
+            TokenReaderStateMachine = TokenReaderStateMachine<CsvTokens>.For(tokenConfiguration);
         }
 
         public int StringCacheMaxLength { get; set; }
 
         public Delimiters Delimiters { get; }
+        
+        internal TokenReaderStateMachine<CsvTokens> TokenReaderStateMachine { get; }
 
         public IncompleteRecordHandling IncompleteRecordHandling { get; set; }
 

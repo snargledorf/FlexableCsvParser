@@ -3,6 +3,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Threading.Tasks;
 using SwiftState;
 using Tokensharp;
@@ -17,28 +18,26 @@ namespace FlexableCsvParser
         private readonly bool _trimLeadingWhiteSpace;
         private readonly bool _trimTrailingWhiteSpace;
 
-        private State<TokenType<CsvTokens>, ParserState> _startState;
+        private static readonly State<TokenType<CsvTokens>, ParserState> StartState =
+            CsvParserStateMachineFactory.StartState;
 
         private readonly string _quote;
         private readonly int _escapeLength;
 
-        private Memory<char> _readBuffer = new char[4096];
-        private int _readBufferLength;
-
-        private bool _endOfReader;
-        private int _startOfRecordIndex;
+        private ReadBuffer _readBuffer = new(4096);
 
         private int _currentFieldStartIndex;
         private int _escapedQuoteCount;
 
+        private int _fieldExaminedLength;
         private int _fieldLength;
         private int _leadingWhiteSpaceLength;
         private int _possibleTrailingWhiteSpaceLength;
 
-        private List<RecordFieldInfo> _currentRecordFields;
-        private int _expectedRecordFieldCount;
+        private readonly List<RecordFieldInfo> _currentRecordFields;
+        private readonly int _expectedRecordFieldCount;
 
-        private StringPool _stringPool;
+        private readonly StringPool _stringPool;
         private int _recordBufferObserved;
         
         private readonly TokenReaderStateMachine<CsvTokens> _tokenReaderStateMachine;
@@ -59,25 +58,7 @@ namespace FlexableCsvParser
             _trimLeadingWhiteSpace = config.WhiteSpaceTrimming.HasFlag(WhiteSpaceTrimming.Leading);
             _trimTrailingWhiteSpace = config.WhiteSpaceTrimming.HasFlag(WhiteSpaceTrimming.Trailing);
 
-            TokenConfiguration<CsvTokens> tokenConfiguration;
-            if (!config.Delimiters.AreRFC4180Compliant)
-            {
-                tokenConfiguration = new TokenConfigurationBuilder<CsvTokens>()
-                {
-                    { config.Delimiters.Field, CsvTokens.FieldDelimiter },
-                    { config.Delimiters.EndOfRecord, CsvTokens.EndOfRecord },
-                    { config.Delimiters.Quote, CsvTokens.Quote },
-                    { config.Delimiters.Escape, CsvTokens.Escape },
-                }.Build();
-            }
-            else
-            {
-                tokenConfiguration = CsvTokens.Configuration;
-            }
-            
-            _tokenReaderStateMachine = TokenReaderStateMachine<CsvTokens>.For(tokenConfiguration);
-            
-            _startState = CsvParserStateMachineFactory.BuildParserStateMachine();
+            _tokenReaderStateMachine = config.TokenReaderStateMachine;
 
             _expectedRecordFieldCount = recordLength;
 
@@ -95,7 +76,7 @@ namespace FlexableCsvParser
             {
                 (CsvParser parser, Memory<string> r) = ((CsvParser, Memory<string>))state;
                 return parser.ReadRecord(r.Span);
-            }, (this, record), default, TaskCreationOptions.DenyChildAttach, TaskScheduler.Default));
+            }, (this, record), CancellationToken.None, TaskCreationOptions.DenyChildAttach, TaskScheduler.Default));
         }
 
         public int ReadRecord(Span<string> record)
@@ -106,21 +87,10 @@ namespace FlexableCsvParser
                 if (bufferLength > FieldCount && _config.IncompleteRecordHandling == IncompleteRecordHandling.TruncateRecord)
                     bufferLength = FieldCount;
 
-                string[] buffer = ArrayPool<string>.Shared.Rent(bufferLength);
-                try
-                {
-                    Span<string> bufferSpan = buffer[..bufferLength];
-                    for (int fieldIndex = 0; fieldIndex < bufferLength; fieldIndex++)
-                        bufferSpan[fieldIndex] = GetString(fieldIndex);
+                for (int fieldIndex = 0; fieldIndex < bufferLength; fieldIndex++)
+                    record[fieldIndex] = GetString(fieldIndex);
 
-                    bufferSpan.CopyTo(record);
-
-                    return bufferLength;
-                }
-                finally
-                {
-                    ArrayPool<string>.Shared.Return(buffer);
-                }
+                return bufferLength;
             }
 
             return 0;
@@ -156,11 +126,11 @@ namespace FlexableCsvParser
                 }
             }
 
-            ref var fieldInfo = ref CollectionsMarshal.AsSpan(_currentRecordFields)[fieldIndex];
+            ref RecordFieldInfo fieldInfo = ref CollectionsMarshal.AsSpan(_currentRecordFields)[fieldIndex];
             if (fieldInfo.Length == 0)
                 return string.Empty;
 
-            ReadOnlySpan<char> recordBuffer = _readBuffer.Span[_startOfRecordIndex.._readBufferLength];
+            ReadOnlySpan<char> recordBuffer = _readBuffer.Chars[.._recordBufferObserved];
 
             ReadOnlySpan<char> fieldSpan = recordBuffer.Slice(fieldInfo.StartIndex, fieldInfo.Length);
 
@@ -205,27 +175,26 @@ namespace FlexableCsvParser
 
         public bool Read()
         {
-            State<TokenType<CsvTokens>, ParserState> currentState = _startState;
+            State<TokenType<CsvTokens>, ParserState> currentState = StartState;
 
             _currentRecordFields.Clear();
-
-            _startOfRecordIndex += _recordBufferObserved;
-            _recordBufferObserved = 0;
-
             _currentFieldStartIndex = 0;
+            _fieldExaminedLength = 0;
+            
+            _readBuffer.AdvanceBuffer(_recordBufferObserved);
+            _recordBufferObserved = 0;
 
             do
             {
-                ReadOnlySpan<char> recordBuffer = _readBuffer.Span[_startOfRecordIndex.._readBufferLength];
-                if (recordBuffer.IsEmpty)
-                    continue;
+                _readBuffer.Read(_reader);
+                if (_readBuffer is { Length: 0, EndOfReader: true })
+                    return false;
 
-                ReadOnlySpan<char> tokenBuffer = recordBuffer[_recordBufferObserved..];
-                while (Tokenizer.TryParseToken(tokenBuffer, _tokenReaderStateMachine, !_endOfReader, out TokenType<CsvTokens>? type, out ReadOnlySpan<char> lexeme))
+                ReadOnlySpan<char> tokenBuffer = _readBuffer.Chars;
+                while (Tokenizer.TryParseToken(tokenBuffer, _tokenReaderStateMachine, !_readBuffer.EndOfReader, out TokenType<CsvTokens>? type, out ReadOnlySpan<char> lexeme))
                 {
                     tokenBuffer = tokenBuffer[lexeme.Length..];
-
-                    _recordBufferObserved = recordBuffer.Length - tokenBuffer.Length;
+                    _fieldExaminedLength += lexeme.Length;
 
                     State<TokenType<CsvTokens>, ParserState> previousState = currentState;
 
@@ -242,12 +211,10 @@ namespace FlexableCsvParser
 
                             case ParserState.EndOfField:
                                 AddCurrentField();
-                                _currentFieldStartIndex = recordBuffer.Length - tokenBuffer.Length;
                                 break;
 
                             case ParserState.EndOfRecord:
                                 CheckRecord();
-                                _currentFieldStartIndex = recordBuffer.Length - tokenBuffer.Length;
                                 return true;
 
                             case ParserState.EscapeAfterLeadingEscape:
@@ -326,9 +293,9 @@ namespace FlexableCsvParser
                         }
                     }
                 }
-            } while (CheckBuffer());
+            } while (!_readBuffer.EndOfReader);
 
-            if (currentState == _startState)
+            if (currentState == StartState)
                 return false;
 
             bool missingClosingQuote = currentState.Id == ParserState.QuotedFieldText;
@@ -340,44 +307,6 @@ namespace FlexableCsvParser
 
             CheckRecord();
             return true;
-        }
-
-        private bool CheckBuffer()
-        {
-            if (!_endOfReader)
-            {
-                if (_startOfRecordIndex != 0)
-                {
-                    this._readBuffer.Span[_startOfRecordIndex.._readBufferLength].CopyTo(this._readBuffer.Span);
-
-                    _readBufferLength -= _startOfRecordIndex;
-
-                    _startOfRecordIndex = 0;
-                }
-                else if (_readBufferLength == this._readBuffer.Length)
-                {
-                    int newLength = this._readBuffer.Length * 2;
-
-                    // Check for overflow
-                    if (newLength < this._readBuffer.Length)
-                        throw new OutOfMemoryException();
-
-                    var oldBuffer = this._readBuffer;
-                    this._readBuffer = new char[newLength];
-
-                    oldBuffer.CopyTo(this._readBuffer);
-                }
-
-                Span<char> readBuffer = this._readBuffer.Span[_readBufferLength..];
-                int charsRead = _reader.Read(readBuffer);
-                _readBufferLength += charsRead;
-
-                _endOfReader = charsRead < readBuffer.Length && _reader.Peek() == -1;
-            }
-
-            int currentReadIndex = _startOfRecordIndex + _recordBufferObserved;
-
-            return currentReadIndex != _readBufferLength;
         }
 
         private void CheckRecord()
@@ -395,8 +324,11 @@ namespace FlexableCsvParser
             var fieldInfo = new RecordFieldInfo(_currentFieldStartIndex, _fieldLength, _escapedQuoteCount);
             _currentRecordFields.Add(fieldInfo);
 
-            _currentFieldStartIndex += _fieldLength;
-            _fieldLength = _escapedQuoteCount = _leadingWhiteSpaceLength = _possibleTrailingWhiteSpaceLength = 0;
+            _recordBufferObserved += _fieldExaminedLength;
+            _currentFieldStartIndex = _recordBufferObserved;
+
+            _fieldLength = _escapedQuoteCount =
+                _leadingWhiteSpaceLength = _possibleTrailingWhiteSpaceLength = _fieldExaminedLength = 0;
         }
     }
 }

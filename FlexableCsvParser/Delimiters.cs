@@ -2,7 +2,7 @@
 
 namespace FlexableCsvParser
 {
-    public sealed class Delimiters
+    public sealed record Delimiters
     {
         public static readonly Delimiters RFC4180 = new();
         public static readonly Delimiters Default = RFC4180;

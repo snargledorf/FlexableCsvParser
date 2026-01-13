@@ -6,7 +6,9 @@ namespace FlexableCsvParser
 {
     internal static class CsvParserStateMachineFactory
     {
-        internal static State<TokenType<CsvTokens>, ParserState> BuildParserStateMachine()
+        public static State<TokenType<CsvTokens>, ParserState> StartState => field ??= BuildParserStateMachine();
+
+        private static State<TokenType<CsvTokens>, ParserState> BuildParserStateMachine()
         {
             var startStateBuilder = new StateBuilder<TokenType<CsvTokens>, ParserState>(ParserState.Start);
             
