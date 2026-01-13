@@ -9,7 +9,8 @@ namespace FlexableCsvParser.Test
     {
         private const int RecordCount = 1000;
         private const int FieldCount = 5;
-        private readonly CsvParser? _parser;
+        private readonly string _csvData;
+        private readonly CsvParserConfig _config;
 
         public ProfileTests()
         {
@@ -25,15 +26,17 @@ namespace FlexableCsvParser.Test
                 sb.AppendLine();
             }
             
-            var csvData = sb.ToString();
-            var stringReader = new StringReader(csvData!);
-            _parser = new CsvParser(stringReader, FieldCount);
+            _csvData = sb.ToString();
+
+            _config = new CsvParserConfig();
         }
 
         [TestMethod]
         public void ParseCsv()
         {
-            while (_parser!.Read()) ;
+            var stringReader = new StringReader(_csvData);
+            var parser = new CsvParser(stringReader, FieldCount, _config);
+            while (parser.Read()) ;
         }
     }
 }

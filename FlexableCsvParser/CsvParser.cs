@@ -146,9 +146,10 @@ namespace FlexableCsvParser
             {
                 Span<char> strBufferSpan = strBuffer.AsSpan()[..fieldUpdatedLength];
                 ReadOnlySpan<char> resultSpan = strBufferSpan;
+                var tokenParser = new TokenParser<CsvTokens>(_tokenReaderStateMachine);
                 while (!fieldSpan.IsEmpty)
                 {
-                    if (!Tokenizer.TryParseToken(fieldSpan, _tokenReaderStateMachine, false, out TokenType<CsvTokens>? type, out ReadOnlySpan<char> lexeme))
+                    if (!tokenParser.TryParseToken(fieldSpan, false, out TokenType<CsvTokens>? type, out ReadOnlySpan<char> lexeme))
                         throw new Exception("Unable to parse field token");
 
                     if (type == CsvTokens.Escape)
@@ -184,6 +185,8 @@ namespace FlexableCsvParser
             _readBuffer.AdvanceBuffer(_recordBufferObserved);
             _recordBufferObserved = 0;
 
+            var tokenParser = new TokenParser<CsvTokens>(_tokenReaderStateMachine);
+
             do
             {
                 _readBuffer.Read(_reader);
@@ -191,10 +194,10 @@ namespace FlexableCsvParser
                     return false;
 
                 ReadOnlySpan<char> tokenBuffer = _readBuffer.Chars;
-                while (Tokenizer.TryParseToken(tokenBuffer, _tokenReaderStateMachine, !_readBuffer.EndOfReader, out TokenType<CsvTokens>? type, out ReadOnlySpan<char> lexeme))
+                while (tokenParser.TryParseToken(tokenBuffer, !_readBuffer.EndOfReader, out TokenType<CsvTokens>? type, out int lexemeLength))
                 {
-                    tokenBuffer = tokenBuffer[lexeme.Length..];
-                    _fieldExaminedLength += lexeme.Length;
+                    tokenBuffer = tokenBuffer[lexemeLength..];
+                    _fieldExaminedLength += lexemeLength;
 
                     State<TokenType<CsvTokens>, ParserState> previousState = currentState;
 
@@ -205,7 +208,7 @@ namespace FlexableCsvParser
                         {
                             case ParserState.UnquotedFieldText:
                             case ParserState.QuotedFieldText:
-                                _fieldLength += lexeme.Length + _leadingWhiteSpaceLength + _possibleTrailingWhiteSpaceLength;
+                                _fieldLength += lexemeLength + _leadingWhiteSpaceLength + _possibleTrailingWhiteSpaceLength;
                                 _leadingWhiteSpaceLength = _possibleTrailingWhiteSpaceLength = 0;
                                 break;
 
@@ -224,7 +227,7 @@ namespace FlexableCsvParser
 
                             case ParserState.QuotedFieldEscape:
                                 _escapedQuoteCount++;
-                                _fieldLength += lexeme.Length + _leadingWhiteSpaceLength + _possibleTrailingWhiteSpaceLength;
+                                _fieldLength += lexemeLength + _leadingWhiteSpaceLength + _possibleTrailingWhiteSpaceLength;
                                 _leadingWhiteSpaceLength = _possibleTrailingWhiteSpaceLength = 0;
                                 break;
 
@@ -233,9 +236,9 @@ namespace FlexableCsvParser
                                 // Only store the leading whitespace if there is a possiblity we might need it
                                 // IE. If trim leading isn't enabled
                                 if (_trimLeadingWhiteSpace)
-                                    _currentFieldStartIndex += lexeme.Length;
+                                    _currentFieldStartIndex += lexemeLength;
                                 else
-                                    _leadingWhiteSpaceLength = lexeme.Length;
+                                    _leadingWhiteSpaceLength = lexemeLength;
                                 break;
 
                             case ParserState.QuotedFieldTrailingWhiteSpace:
@@ -244,9 +247,9 @@ namespace FlexableCsvParser
                                 // This is so if we do end up with more field text, we can append the whitespace
                                 // since that means it isn't trailing
                                 if (_trimTrailingWhiteSpace)
-                                    _possibleTrailingWhiteSpaceLength = lexeme.Length;
+                                    _possibleTrailingWhiteSpaceLength = lexemeLength;
                                 else
-                                    _fieldLength += lexeme.Length;
+                                    _fieldLength += lexemeLength;
 
                                 break;
 
@@ -269,7 +272,7 @@ namespace FlexableCsvParser
                                 break;
 
                             default:
-                                _currentFieldStartIndex += lexeme.Length + _leadingWhiteSpaceLength;
+                                _currentFieldStartIndex += lexemeLength + _leadingWhiteSpaceLength;
                                 _leadingWhiteSpaceLength = 0;
                                 break;
                         }
@@ -280,12 +283,12 @@ namespace FlexableCsvParser
                         {
                             case ParserState.QuotedFieldText:
                             case ParserState.UnquotedFieldText:
-                                _fieldLength += lexeme.Length;
+                                _fieldLength += lexemeLength;
                                 break;
 
                             case ParserState.EscapeAfterLeadingEscape: // I don't think this will ever be hit???
                                 _escapedQuoteCount++;
-                                _fieldLength += lexeme.Length;
+                                _fieldLength += lexemeLength;
                                 break;
 
                             default:
