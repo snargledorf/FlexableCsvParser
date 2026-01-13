@@ -5,7 +5,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Tokensharp;
+namespace FlexableCsvParser;
 
 internal struct ReadBuffer(int initialBufferSize) : IDisposable
 {
@@ -23,6 +23,8 @@ internal struct ReadBuffer(int initialBufferSize) : IDisposable
     public readonly async ValueTask<ReadBuffer> ReadAsync(TextReader reader, CancellationToken cancellationToken = default)
     {
         ReadBuffer readBuffer = this;
+        if (readBuffer._length == readBuffer._buffer.Length)
+            readBuffer.ExpandBuffer();
 
         do
         {
@@ -44,6 +46,9 @@ internal struct ReadBuffer(int initialBufferSize) : IDisposable
 
     public void Read(TextReader reader)
     {
+        if (_length == _buffer.Length)
+            ExpandBuffer();
+        
         do
         {
             int charsRead = reader.Read(_buffer.AsSpan(_length));
@@ -58,36 +63,26 @@ internal struct ReadBuffer(int initialBufferSize) : IDisposable
         } while (_length < _buffer.Length);
     }
 
+    private void ExpandBuffer()
+    {
+        char[] oldBuffer = _buffer;
+                
+        int newMinBufferLength = _buffer.Length < (int.MaxValue / 2) ? _buffer.Length * 2 : int.MaxValue;
+        char[] newBuffer = ArrayPool<char>.Shared.Rent(newMinBufferLength);
+                
+        oldBuffer.AsSpan(0, _length).CopyTo(newBuffer.AsSpan(0, _length));
+                
+        _buffer = newBuffer;
+                
+        ArrayPool<char>.Shared.Return(oldBuffer);
+    }
+
     public void AdvanceBuffer(int charsConsumed)
     {
-        Debug.Assert(charsConsumed <= Length);
+        Debug.Assert(charsConsumed <= _length);
         
         _length -= charsConsumed;
-
-        if (!_endOfReader)
-        {
-            if ((uint)_length > ((uint)_buffer.Length / 2))
-            {
-                char[] oldBuffer = _buffer;
-                
-                int newMinBufferLength = _buffer.Length < (int.MaxValue / 2) ? _buffer.Length * 2 : int.MaxValue;
-                char[] newBuffer = ArrayPool<char>.Shared.Rent(newMinBufferLength);
-                
-                oldBuffer.AsSpan(charsConsumed).CopyTo(newBuffer.AsSpan(0, _length));
-                
-                _buffer = newBuffer;
-                
-                ArrayPool<char>.Shared.Return(oldBuffer, true);
-            }
-            else if (_length > 0)
-            {
-                _buffer.AsSpan(charsConsumed, _length).CopyTo(_buffer.AsSpan(0, _length));
-            }
-        }
-        else if (_length > 0)
-        {
-            _buffer.AsSpan(charsConsumed, _length).CopyTo(_buffer.AsSpan(0, _length));
-        }
+        _buffer.AsSpan(charsConsumed, _length).CopyTo(_buffer.AsSpan(0, _length));
     }
 
     public void Dispose()

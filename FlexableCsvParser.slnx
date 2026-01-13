@@ -2,4 +2,5 @@
   <Project Path="FlexableCsvParser.Benchmark/FlexableCsvParser.Benchmark.csproj" />
   <Project Path="FlexableCsvParser.Test/FlexableCsvParser.Test.csproj" />
   <Project Path="FlexableCsvParser/FlexableCsvParser.csproj" />
+  <Project Path="TestHarness/TestHarness.csproj" />
 </Solution>

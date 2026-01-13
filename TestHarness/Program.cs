@@ -13,7 +13,7 @@ namespace TestHarness
         static async Task Main(string[] args)
         {
             // Testing dataset https://www.kaggle.com/najzeko/steam-reviews-2021
-            const string filePath = @"..\..\big.csv";
+            const string filePath = @"..\..\..\big.csv";
 
             using var fs = File.OpenRead(filePath);
             using var dataRateStream = new DataRateStream(fs, TimeSpan.FromSeconds(2));
@@ -49,22 +49,10 @@ namespace TestHarness
             while (reader.ReadLine() != null) ;
         }
 
-        private static void Tokenize(StreamReader reader)
-        {
-            var tokenizer = new RFC4180Tokenizer();
-
-            while (tokenizer.NextToken(reader).Type != TokenType.EndOfReader)
-            {
-            }
-        }
-
         private static void Parse(StreamReader reader)
         {
-            var parser = new CsvParser(reader);
-
-            while (parser.TryReadRecord(out string[] _))
-            {
-            }
+            var parser = new CsvParser(reader, 23);
+            while (parser.Read()) ;
         }
     }
 }

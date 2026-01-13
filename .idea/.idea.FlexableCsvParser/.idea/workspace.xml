@@ -10,8 +10,10 @@
   <component name="ChangeListManager">
     <list default="true" id="62cb3925-b51d-4048-b1da-7866f204f2a9" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/.idea.FlexableCsvParser/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.FlexableCsvParser/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/FlexableCsvParser.Test/ProfileTests.cs" beforeDir="false" afterPath="$PROJECT_DIR$/FlexableCsvParser.Test/ProfileTests.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/FlexableCsvParser/FlexableCsvParser.csproj" beforeDir="false" afterPath="$PROJECT_DIR$/FlexableCsvParser/FlexableCsvParser.csproj" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/FlexableCsvParser.slnx" beforeDir="false" afterPath="$PROJECT_DIR$/FlexableCsvParser.slnx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/FlexableCsvParser/ReadBuffer.cs" beforeDir="false" afterPath="$PROJECT_DIR$/FlexableCsvParser/ReadBuffer.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/TestHarness/Program.cs" beforeDir="false" afterPath="$PROJECT_DIR$/TestHarness/Program.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/TestHarness/TestHarness.csproj" beforeDir="false" afterPath="$PROJECT_DIR$/TestHarness/TestHarness.csproj" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -70,7 +72,8 @@
   <component name="PropertiesComponent">{
   &quot;keyToString&quot;: {
     &quot;.NET Project.FlexableCsvParser.Benchmark.executor&quot;: &quot;Run&quot;,
-    &quot;21f90f17-d63d-4185-82bf-f58131e75ae6.executor&quot;: &quot;Debug&quot;,
+    &quot;.NET Project.TestHarness.executor&quot;: &quot;Debug&quot;,
+    &quot;21f90f17-d63d-4185-82bf-f58131e75ae6.executor&quot;: &quot;Run&quot;,
     &quot;RunOnceActivity.MCP Project settings loaded&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
@@ -85,7 +88,7 @@
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
 }</component>
-  <component name="RunManager" selected=".NET Project.FlexableCsvParser.Benchmark">
+  <component name="RunManager" selected=".NET Project.TestHarness">
     <configuration name="FlexableCsvParser.Benchmark" type="DotNetProject" factoryName=".NET Project">
       <option name="EXE_PATH" value="" />
       <option name="PROGRAM_PARAMETERS" value="" />
@@ -157,6 +160,8 @@
       <workItem from="1768318170991" duration="3045000" />
       <workItem from="1768321306193" duration="5650000" />
       <workItem from="1768340578750" duration="170000" />
+      <workItem from="1768340775844" duration="636000" />
+      <workItem from="1768341475483" duration="1841000" />
     </task>
     <task id="LOCAL-00001" summary="Replace custom tokenizer implementation with Tokensharp and SwiftState; Removed FastState dependency and deleted custom tokenizer classes; Updated CsvParser to use Tokensharp for tokenization and SwiftState for parsing logic; Updated target frameworks to net8.0, net9.0, and net10.0">
       <option name="closed" value="true" />
@@ -198,7 +203,15 @@
       <option name="project" value="LOCAL" />
       <updated>1768318277683</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="Updated Tokensharp to 3.1.0; Refactored CsvParser to use TokenParser instance instead of static Tokenizer; Updated ProfileTests to instantiate parser in test method">
+      <option name="closed" value="true" />
+      <created>1768340978231</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1768340978231</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -224,7 +237,8 @@
     <MESSAGE value="Added ProfileTests; Refactored CsvParserBenchmarks to use IterationSetup and removed GetString calls from benchmark loop" />
     <MESSAGE value="Rename private fields in CsvParser to use underscore prefix; Convert RecordFieldInfo to record struct; Add ReadBuffer struct" />
     <MESSAGE value="Move previousState declaration inside the loop" />
-    <option name="LAST_COMMIT_MESSAGE" value="Move previousState declaration inside the loop" />
+    <MESSAGE value="Updated Tokensharp to 3.1.0; Refactored CsvParser to use TokenParser instance instead of static Tokenizer; Updated ProfileTests to instantiate parser in test method" />
+    <option name="LAST_COMMIT_MESSAGE" value="Updated Tokensharp to 3.1.0; Refactored CsvParser to use TokenParser instance instead of static Tokenizer; Updated ProfileTests to instantiate parser in test method" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
