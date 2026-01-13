@@ -220,8 +220,6 @@ namespace FlexableCsvParser
                 if (recordBuffer.IsEmpty)
                     continue;
 
-                State<TokenType<CsvTokens>, ParserState> previousState;
-
                 ReadOnlySpan<char> tokenBuffer = recordBuffer[_recordBufferObserved..];
                 while (Tokenizer.TryParseToken(tokenBuffer, _tokenReaderStateMachine, !_endOfReader, out TokenType<CsvTokens>? type, out ReadOnlySpan<char> lexeme))
                 {
@@ -229,7 +227,7 @@ namespace FlexableCsvParser
 
                     _recordBufferObserved = recordBuffer.Length - tokenBuffer.Length;
 
-                    previousState = currentState;
+                    State<TokenType<CsvTokens>, ParserState> previousState = currentState;
 
                     if (currentState.TryTransition(type, out State<TokenType<CsvTokens>, ParserState>? newState))
                     {
