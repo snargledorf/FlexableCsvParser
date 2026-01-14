@@ -25,7 +25,7 @@ namespace FlexableCsvParser
         private readonly string _quote;
         private readonly int _escapeLength;
 
-        private ReadBuffer _recordBuffer = new(4096);
+        private readonly ReadBuffer _recordBuffer = new(4096);
 
         private int _currentFieldStartIndex;
         private int _escapedQuoteCount;
@@ -105,8 +105,6 @@ namespace FlexableCsvParser
         {
             if (fieldIndex >= _expectedRecordFieldCount)
                 throw new ArgumentOutOfRangeException(nameof(fieldIndex));
-
-            // TODO Cache values
 
             if (fieldIndex >= FieldCount)
             {

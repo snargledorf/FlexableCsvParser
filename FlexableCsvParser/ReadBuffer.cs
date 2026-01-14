@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace FlexableCsvParser;
 
-internal struct ReadBuffer(int initialBufferSize) : IDisposable
+internal class ReadBuffer(int initialBufferSize) : IDisposable
 {
     private char[] _buffer = ArrayPool<char>.Shared.Rent(initialBufferSize);
 
@@ -15,23 +15,31 @@ internal struct ReadBuffer(int initialBufferSize) : IDisposable
     private int _length;
     private bool _endOfReader;
 
-    public readonly bool EndOfReader => _endOfReader;
+    public bool EndOfReader => _endOfReader;
 
-    public readonly ReadOnlySpan<char> Chars => _buffer.AsSpan(_index, _length);
+    public ReadOnlySpan<char> Chars => _buffer.AsSpan(_index, _length);
 
     public int Length => _length;
 
     public void Read(TextReader reader)
     {
-        CheckBuffer();
-
+        if (_endOfReader)
+            return;
+        
         do
         {
-            int charsRead = reader.Read(_buffer.AsSpan(_length));
+            Span<char> readBuffer = _buffer.AsSpan(_index + _length);
+            if (readBuffer.Length == 0)
+            {
+                CheckBuffer();
+                readBuffer = _buffer.AsSpan(_length);
+            }
+            
+            int charsRead = reader.Read(readBuffer);
             if (charsRead == 0)
             {
                 _endOfReader = true;
-                break;
+                return;
             }
 
             _length += charsRead;
