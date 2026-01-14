@@ -2,6 +2,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -14,19 +15,31 @@ namespace TestHarness
         static void Main(string[] args)
         {
             // Testing dataset https://www.kaggle.com/najzeko/steam-reviews-2021
-            const string filePath = @"..\..\..\big.csv";
 
-            using FileStream fs = File.OpenRead(filePath);
-            using var dataRateStream = new DataRateStream(fs, TimeSpan.FromSeconds(2));
+            if (args.Length <= 0 || !File.Exists(args[0]))
+            {
+                Console.WriteLine($"A valid file path should be passed as an argument");
+                return;
+            }
+
+            string filePath = args[0];
+
+            using FileStream fs = File.Open(filePath, new FileStreamOptions()
+            {
+                Access = FileAccess.Read,
+                Share = FileShare.Read,
+                Options = FileOptions.SequentialScan
+            });
+            
+           /* using var dataRateStream = new DataRateStream(fs, TimeSpan.FromSeconds(2));
             dataRateStream.DataRateUpdate += (_, bytesPerSecond) => {
                 double kilobytesPerSecond = bytesPerSecond / 1000;
                 double megabytesPerSecond = kilobytesPerSecond / 1000;
 
-                Console.Clear();
-                Console.Write($"{megabytesPerSecond} Mb/s");
+                Console.WriteLine($"{megabytesPerSecond} Mb/s");
             };
-
-            using var reader = new StreamReader(dataRateStream, Encoding.UTF8);
+*/
+            using var reader = new StreamReader(fs, Encoding.UTF8);
 
             var stopwatch = new Stopwatch();
             stopwatch.Start();
@@ -51,10 +64,11 @@ namespace TestHarness
         private static void Parse(StreamReader reader)
         {
             var parser = new CsvParser(reader, 23);
+            uint recordCount = 0;
             while (parser.Read())
             {
-                for (var i = 0; i < parser.FieldCount; i++)
-                    _ = parser.GetString(i);
+                if (++recordCount % 5000 == 0)
+                    Console.WriteLine(string.Join(", ", Enumerable.Range(0, parser.FieldCount).Select(parser.GetString)));
             }
         }
     }
