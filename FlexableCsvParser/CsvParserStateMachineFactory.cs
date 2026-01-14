@@ -46,7 +46,7 @@ namespace FlexableCsvParser
 
             IStateBuilder<TokenType<CsvTokens>, ParserState> unquotedFieldTrailingWhiteSpaceBuilder = unquotedFieldTextBuilder.When(CsvTokens.WhiteSpace, ParserState.UnquotedFieldTrailingWhiteSpace);
 
-            unquotedFieldTrailingWhiteSpaceBuilder.When(CsvTokens.Text, ParserState.UnquotedFieldText);
+            unquotedFieldTrailingWhiteSpaceBuilder.GotoWhen(ParserState.UnquotedFieldText, CsvTokens.Text, CsvTokens.Number);
             unquotedFieldTrailingWhiteSpaceBuilder.When(CsvTokens.FieldDelimiter, ParserState.EndOfField);
             unquotedFieldTrailingWhiteSpaceBuilder.When(CsvTokens.EndOfRecord, ParserState.EndOfRecord);
             unquotedFieldTrailingWhiteSpaceBuilder.GotoWhen(ParserState.UnexpectedToken, CsvTokens.WhiteSpace, CsvTokens.Escape, CsvTokens.Quote);
@@ -57,7 +57,7 @@ namespace FlexableCsvParser
         {
             IStateBuilder<TokenType<CsvTokens>, ParserState> leadingWhiteSpaceBuilder = builder.GetBuilderForState(ParserState.LeadingWhiteSpace);
             
-            leadingWhiteSpaceBuilder.When(CsvTokens.Text, ParserState.UnquotedFieldText);
+            leadingWhiteSpaceBuilder.GotoWhen(ParserState.UnquotedFieldText, CsvTokens.Text, CsvTokens.Number);
             leadingWhiteSpaceBuilder.When(CsvTokens.Quote, ParserState.QuotedFieldOpenQuote);
             leadingWhiteSpaceBuilder.When(CsvTokens.FieldDelimiter, ParserState.EndOfField);
             leadingWhiteSpaceBuilder.When(CsvTokens.EndOfRecord, ParserState.EndOfRecord);
