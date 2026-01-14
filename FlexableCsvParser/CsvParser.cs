@@ -2,6 +2,7 @@
 using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -24,7 +25,7 @@ namespace FlexableCsvParser
         private readonly string _quote;
         private readonly int _escapeLength;
 
-        private ReadBuffer _readBuffer = new(4096);
+        private ReadBuffer _recordBuffer = new(4096);
 
         private int _currentFieldStartIndex;
         private int _escapedQuoteCount;
@@ -39,6 +40,8 @@ namespace FlexableCsvParser
 
         private readonly StringPool _stringPool;
         private int _recordBufferObserved;
+
+        private uint _recordCount;
         
         private readonly TokenReaderStateMachine<CsvTokens> _tokenReaderStateMachine;
 
@@ -88,7 +91,7 @@ namespace FlexableCsvParser
                     bufferLength = FieldCount;
 
                 for (int fieldIndex = 0; fieldIndex < bufferLength; fieldIndex++)
-                    record[fieldIndex] = GetString(fieldIndex);
+                    record[fieldIndex] = GetString(fieldIndex)!;
 
                 return bufferLength;
             }
@@ -98,7 +101,7 @@ namespace FlexableCsvParser
 
         public int FieldCount => _currentRecordFields.Count;
 
-        public string GetString(int fieldIndex)
+        public string? GetString(int fieldIndex)
         {
             if (fieldIndex >= _expectedRecordFieldCount)
                 throw new ArgumentOutOfRangeException(nameof(fieldIndex));
@@ -130,7 +133,7 @@ namespace FlexableCsvParser
             if (fieldInfo.Length == 0)
                 return string.Empty;
 
-            ReadOnlySpan<char> recordBuffer = _readBuffer.Chars[.._recordBufferObserved];
+            ReadOnlySpan<char> recordBuffer = _recordBuffer.Chars[.._recordBufferObserved];
 
             ReadOnlySpan<char> fieldSpan = recordBuffer.Slice(fieldInfo.StartIndex, fieldInfo.Length);
 
@@ -182,19 +185,20 @@ namespace FlexableCsvParser
             _currentFieldStartIndex = 0;
             _fieldExaminedLength = 0;
             
-            _readBuffer.AdvanceBuffer(_recordBufferObserved);
+            _recordBuffer.AdvanceBuffer(_recordBufferObserved);
             _recordBufferObserved = 0;
 
             var tokenParser = new TokenParser<CsvTokens>(_tokenReaderStateMachine);
 
             do
             {
-                _readBuffer.Read(_reader);
-                if (_readBuffer is { Length: 0, EndOfReader: true })
+                _recordBuffer.Read(_reader);
+                if (_recordBuffer is { Length: 0, EndOfReader: true })
                     return false;
 
-                ReadOnlySpan<char> tokenBuffer = _readBuffer.Chars;
-                while (tokenParser.TryParseToken(tokenBuffer, !_readBuffer.EndOfReader, out TokenType<CsvTokens>? type, out int lexemeLength))
+                int resumeLocationForTokenBuffer = _recordBufferObserved + _fieldExaminedLength;
+                ReadOnlySpan<char> tokenBuffer = _recordBuffer.Chars[resumeLocationForTokenBuffer..];
+                while (tokenParser.TryParseToken(tokenBuffer, !_recordBuffer.EndOfReader, out TokenType<CsvTokens>? type, out int lexemeLength))
                 {
                     tokenBuffer = tokenBuffer[lexemeLength..];
                     _fieldExaminedLength += lexemeLength;
@@ -254,7 +258,8 @@ namespace FlexableCsvParser
                                 break;
 
                             case ParserState.UnexpectedToken:
-                                throw new InvalidDataException($"Unexpected token: State = {previousState}, Buffer = {tokenBuffer}");
+                                ThrowUnexpectedTokenException(previousState, tokenBuffer);
+                                break;
 
                             case ParserState.QuotedFieldClosingQuoteTrailingWhiteSpace:
                             case ParserState.QuotedFieldClosingQuote:
@@ -292,11 +297,12 @@ namespace FlexableCsvParser
                                 break;
 
                             default:
-                                throw new InvalidDataException($"Unexpected state: State = {currentState}, Buffer = {tokenBuffer}");
+                                ThrowUnexpectedTokenException(currentState, tokenBuffer);
+                                break;
                         }
                     }
                 }
-            } while (!_readBuffer.EndOfReader);
+            } while (!_recordBuffer.EndOfReader);
 
             if (currentState == StartState)
                 return false;
@@ -306,10 +312,15 @@ namespace FlexableCsvParser
                 missingClosingQuote = defaultState.Id == ParserState.QuotedFieldText;
 
             if (missingClosingQuote)
-                throw new Exception($"Final quoted field did not have a closing quote: State = {currentState}, Buffer = {_readBuffer}");
+                throw new Exception($"Final quoted field did not have a closing quote: State = {currentState}, Buffer = {_recordBuffer}");
 
             CheckRecord();
             return true;
+        }
+
+        private void ThrowUnexpectedTokenException(State<TokenType<CsvTokens>, ParserState> state, ReadOnlySpan<char> tokenBuffer)
+        {
+            throw new InvalidDataException($"Unexpected token: State = {state}, Buffer = {tokenBuffer}, Record count = {_recordCount}");
         }
 
         private void CheckRecord()
@@ -317,11 +328,16 @@ namespace FlexableCsvParser
             AddCurrentField();
 
             if (FieldCount < _expectedRecordFieldCount && _config.IncompleteRecordHandling == IncompleteRecordHandling.ThrowException)
-                throw new InvalidDataException($"Record is incomplete"); // TODO output partial record
+                throw new InvalidDataException($"Record is incomplete: {string.Join(", ", Enumerable.Range(0, _currentRecordFields.Count).Select(GetString))}");
+            
+            _recordCount++;
         }
 
         private void AddCurrentField()
         {
+            if (_currentRecordFields.Count == _expectedRecordFieldCount)
+                throw new InvalidDataException($"Record is too long: {string.Join(", ", Enumerable.Range(0, _currentRecordFields.Count).Select(GetString))}");
+            
             _fieldLength += _leadingWhiteSpaceLength;
 
             var fieldInfo = new RecordFieldInfo(_currentFieldStartIndex, _fieldLength, _escapedQuoteCount);
