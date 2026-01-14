@@ -10,10 +10,9 @@
   <component name="ChangeListManager">
     <list default="true" id="62cb3925-b51d-4048-b1da-7866f204f2a9" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/.idea.FlexableCsvParser/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.FlexableCsvParser/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/FlexableCsvParser.slnx" beforeDir="false" afterPath="$PROJECT_DIR$/FlexableCsvParser.slnx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/FlexableCsvParser/ReadBuffer.cs" beforeDir="false" afterPath="$PROJECT_DIR$/FlexableCsvParser/ReadBuffer.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/FlexableCsvParser/CsvParser.cs" beforeDir="false" afterPath="$PROJECT_DIR$/FlexableCsvParser/CsvParser.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/FlexableCsvParser/CsvParserStateMachineFactory.cs" beforeDir="false" afterPath="$PROJECT_DIR$/FlexableCsvParser/CsvParserStateMachineFactory.cs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/TestHarness/Program.cs" beforeDir="false" afterPath="$PROJECT_DIR$/TestHarness/Program.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/TestHarness/TestHarness.csproj" beforeDir="false" afterPath="$PROJECT_DIR$/TestHarness/TestHarness.csproj" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -24,7 +23,7 @@
     <option name="firstShow" value="false" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="5" />
+    <option name="cachedIndexableFilesCount" value="7" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="Git.Settings">
@@ -69,25 +68,25 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;.NET Project.FlexableCsvParser.Benchmark.executor&quot;: &quot;Run&quot;,
-    &quot;.NET Project.TestHarness.executor&quot;: &quot;Debug&quot;,
-    &quot;21f90f17-d63d-4185-82bf-f58131e75ae6.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.MCP Project settings loaded&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;optimization&quot;,
-    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    ".NET Project.FlexableCsvParser.Benchmark.executor": "Run",
+    ".NET Project.TestHarness.executor": "Debug",
+    "21f90f17-d63d-4185-82bf-f58131e75ae6.executor": "Run",
+    "RunOnceActivity.MCP Project settings loaded": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "git-widget-placeholder": "optimization",
+    "ignore.virus.scanning.warn.message": "true",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RunManager" selected=".NET Project.TestHarness">
     <configuration name="FlexableCsvParser.Benchmark" type="DotNetProject" factoryName=".NET Project">
       <option name="EXE_PATH" value="" />
@@ -162,6 +161,7 @@
       <workItem from="1768340578750" duration="170000" />
       <workItem from="1768340775844" duration="636000" />
       <workItem from="1768341475483" duration="1841000" />
+      <workItem from="1768344854111" duration="3984000" />
     </task>
     <task id="LOCAL-00001" summary="Replace custom tokenizer implementation with Tokensharp and SwiftState; Removed FastState dependency and deleted custom tokenizer classes; Updated CsvParser to use Tokensharp for tokenization and SwiftState for parsing logic; Updated target frameworks to net8.0, net9.0, and net10.0">
       <option name="closed" value="true" />
@@ -211,7 +211,15 @@
       <option name="project" value="LOCAL" />
       <updated>1768340978231</updated>
     </task>
-    <option name="localTasksCounter" value="7" />
+    <task id="LOCAL-00007" summary="Refactored ReadBuffer to expand when full and simplified AdvanceBuffer logic; Updated TestHarness to .NET 10.0 and updated CsvParser usage; Added TestHarness to solution">
+      <option name="closed" value="true" />
+      <created>1768344928509</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1768344928509</updated>
+    </task>
+    <option name="localTasksCounter" value="8" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -238,7 +246,8 @@
     <MESSAGE value="Rename private fields in CsvParser to use underscore prefix; Convert RecordFieldInfo to record struct; Add ReadBuffer struct" />
     <MESSAGE value="Move previousState declaration inside the loop" />
     <MESSAGE value="Updated Tokensharp to 3.1.0; Refactored CsvParser to use TokenParser instance instead of static Tokenizer; Updated ProfileTests to instantiate parser in test method" />
-    <option name="LAST_COMMIT_MESSAGE" value="Updated Tokensharp to 3.1.0; Refactored CsvParser to use TokenParser instance instead of static Tokenizer; Updated ProfileTests to instantiate parser in test method" />
+    <MESSAGE value="Refactored ReadBuffer to expand when full and simplified AdvanceBuffer logic; Updated TestHarness to .NET 10.0 and updated CsvParser usage; Added TestHarness to solution" />
+    <option name="LAST_COMMIT_MESSAGE" value="Refactored ReadBuffer to expand when full and simplified AdvanceBuffer logic; Updated TestHarness to .NET 10.0 and updated CsvParser usage; Added TestHarness to solution" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -267,6 +276,45 @@
             </endOffsets>
           </properties>
           <option name="timeStamp" value="6" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DotNet Breakpoints">
+          <url>file://$PROJECT_DIR$/FlexableCsvParser/CsvParser.cs</url>
+          <line>339</line>
+          <properties documentPath="C:\Users\Ryan\source\repos\snargledorf\FlexableCsvParser\FlexableCsvParser\CsvParser.cs" containingFunctionPresentation="Method 'AddCurrentField'">
+            <startOffsets>
+              <option value="14392" />
+            </startOffsets>
+            <endOffsets>
+              <option value="14534" />
+            </endOffsets>
+          </properties>
+          <option name="timeStamp" value="15" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DotNet Breakpoints">
+          <url>file://$PROJECT_DIR$/FlexableCsvParser/CsvParser.cs</url>
+          <line>182</line>
+          <properties documentPath="C:\Users\Ryan\source\repos\snargledorf\FlexableCsvParser\FlexableCsvParser\CsvParser.cs" containingFunctionPresentation="Method 'Read'">
+            <startOffsets>
+              <option value="6706" />
+            </startOffsets>
+            <endOffsets>
+              <option value="6773" />
+            </endOffsets>
+          </properties>
+          <option name="timeStamp" value="16" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DotNet Breakpoints">
+          <url>file://$PROJECT_DIR$/FlexableCsvParser/CsvParser.cs</url>
+          <line>203</line>
+          <properties documentPath="C:\Users\Ryan\source\repos\snargledorf\FlexableCsvParser\FlexableCsvParser\CsvParser.cs" containingFunctionPresentation="Method 'Read'">
+            <startOffsets>
+              <option value="7660" />
+            </startOffsets>
+            <endOffsets>
+              <option value="7702" />
+            </endOffsets>
+          </properties>
+          <option name="timeStamp" value="17" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
