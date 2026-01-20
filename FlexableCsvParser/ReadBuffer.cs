@@ -2,14 +2,12 @@ using System;
 using System.Buffers;
 using System.Diagnostics;
 using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace FlexableCsvParser;
 
 internal class ReadBuffer(int initialBufferSize) : IDisposable
 {
-    private char[] _buffer = ArrayPool<char>.Shared.Rent(initialBufferSize);
+    private char[] _buffer = new char[initialBufferSize];
 
     private int _index;
     private int _length;
@@ -61,14 +59,12 @@ internal class ReadBuffer(int initialBufferSize) : IDisposable
         {
             char[] oldBuffer = _buffer;
                 
-            int newMinBufferLength = _buffer.Length < (int.MaxValue / 2) ? _buffer.Length * 2 : int.MaxValue;
-            char[] newBuffer = ArrayPool<char>.Shared.Rent(newMinBufferLength);
+            int newBufferLength = _buffer.Length < (int.MaxValue / 2) ? _buffer.Length * 2 : int.MaxValue;
+            var newBuffer = new char[newBufferLength];
                 
             oldBuffer.AsSpan(0, _length).CopyTo(newBuffer);
                 
             _buffer = newBuffer;
-                
-            ArrayPool<char>.Shared.Return(oldBuffer);
         }
         else if (_index > 0)
         {

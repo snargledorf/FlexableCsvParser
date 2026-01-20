@@ -35,13 +35,14 @@ namespace FlexableCsvParser
         private int _leadingWhiteSpaceLength;
         private int _possibleTrailingWhiteSpaceLength;
 
-        private readonly List<RecordFieldInfo> _currentRecordFields;
+        private readonly RecordFieldInfo[] _currentRecordFields;
         private readonly int _expectedRecordFieldCount;
 
         private readonly StringPool _stringPool;
         private int _recordBufferObserved;
 
         private uint _recordCount;
+        private int _fieldCount;
         
         private readonly TokenConfiguration<CsvTokens> _tokenConfiguration;
 
@@ -65,7 +66,7 @@ namespace FlexableCsvParser
 
             _expectedRecordFieldCount = recordLength;
 
-            _currentRecordFields = new List<RecordFieldInfo>(_expectedRecordFieldCount);
+            _currentRecordFields = new RecordFieldInfo[_expectedRecordFieldCount];
 
             _quote = config.Delimiters.Quote;
             _escapeLength = config.Delimiters.Escape.Length;
@@ -99,7 +100,7 @@ namespace FlexableCsvParser
             return 0;
         }
 
-        public int FieldCount => _currentRecordFields.Count;
+        public int FieldCount => _fieldCount;
 
         public string? GetString(int fieldIndex)
         {
@@ -127,7 +128,7 @@ namespace FlexableCsvParser
                 }
             }
 
-            ref RecordFieldInfo fieldInfo = ref CollectionsMarshal.AsSpan(_currentRecordFields)[fieldIndex];
+            ref RecordFieldInfo fieldInfo = ref _currentRecordFields.AsSpan()[fieldIndex];
             if (fieldInfo.Length == 0)
                 return string.Empty;
 
@@ -179,7 +180,7 @@ namespace FlexableCsvParser
         {
             State<TokenType<CsvTokens>, ParserState> currentState = StartState;
 
-            _currentRecordFields.Clear();
+            _fieldCount = 0;
             _currentFieldStartIndex = 0;
             _fieldExaminedLength = 0;
             
@@ -326,20 +327,20 @@ namespace FlexableCsvParser
             AddCurrentField();
 
             if (FieldCount < _expectedRecordFieldCount && _config.IncompleteRecordHandling == IncompleteRecordHandling.ThrowException)
-                throw new InvalidDataException($"Record is incomplete: {string.Join(", ", Enumerable.Range(0, _currentRecordFields.Count).Select(GetString))}");
+                throw new InvalidDataException($"Record is incomplete: {string.Join(", ", Enumerable.Range(0, _fieldCount).Select(GetString))}");
             
             _recordCount++;
         }
 
         private void AddCurrentField()
         {
-            if (_currentRecordFields.Count == _expectedRecordFieldCount)
-                throw new InvalidDataException($"Record is too long: {string.Join(", ", Enumerable.Range(0, _currentRecordFields.Count).Select(GetString))}");
+            if (_fieldCount == _expectedRecordFieldCount)
+                throw new InvalidDataException($"Record is too long: {string.Join(", ", Enumerable.Range(0, _fieldCount).Select(GetString))}");
             
             _fieldLength += _leadingWhiteSpaceLength;
 
             var fieldInfo = new RecordFieldInfo(_currentFieldStartIndex, _fieldLength, _escapedQuoteCount);
-            _currentRecordFields.Add(fieldInfo);
+            _currentRecordFields[_fieldCount++] = fieldInfo;
 
             _recordBufferObserved += _fieldExaminedLength;
             _currentFieldStartIndex = _recordBufferObserved;
