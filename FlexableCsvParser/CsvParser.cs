@@ -68,7 +68,7 @@ namespace FlexableCsvParser
             _quote = config.Delimiters.Quote;
             _escapeLength = config.Delimiters.Escape.Length;
 
-            _stringPool = new(config.StringCacheMaxLength);
+            _stringPool = new StringPool(config.StringCacheMaxLength);
         }
 
         public ValueTask<int> ReadRecordAsync(Memory<string> record)
