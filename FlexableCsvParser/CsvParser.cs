@@ -43,7 +43,7 @@ namespace FlexableCsvParser
 
         private uint _recordCount;
         
-        private readonly TokenReaderStateMachine<CsvTokens> _tokenReaderStateMachine;
+        private readonly TokenConfiguration<CsvTokens> _tokenConfiguration;
 
         public CsvParser(TextReader reader, int recordLength)
             : this(reader, recordLength, CsvParserConfig.Default)
@@ -61,7 +61,7 @@ namespace FlexableCsvParser
             _trimLeadingWhiteSpace = config.WhiteSpaceTrimming.HasFlag(WhiteSpaceTrimming.Leading);
             _trimTrailingWhiteSpace = config.WhiteSpaceTrimming.HasFlag(WhiteSpaceTrimming.Trailing);
 
-            _tokenReaderStateMachine = config.TokenReaderStateMachine;
+            _tokenConfiguration = config.TokenConfiguration;
 
             _expectedRecordFieldCount = recordLength;
 
@@ -149,7 +149,7 @@ namespace FlexableCsvParser
             {
                 Span<char> strBufferSpan = strBuffer.AsSpan()[..fieldUpdatedLength];
                 ReadOnlySpan<char> resultSpan = strBufferSpan;
-                var tokenParser = new TokenParser<CsvTokens>(_tokenReaderStateMachine);
+                var tokenParser = new TokenParser<CsvTokens>(_tokenConfiguration);
                 while (!fieldSpan.IsEmpty)
                 {
                     if (!tokenParser.TryParseToken(fieldSpan, false, out TokenType<CsvTokens>? type, out ReadOnlySpan<char> lexeme))
@@ -188,7 +188,7 @@ namespace FlexableCsvParser
             _recordBuffer.AdvanceBuffer(_recordBufferObserved);
             _recordBufferObserved = 0;
 
-            var tokenParser = new TokenParser<CsvTokens>(_tokenReaderStateMachine);
+            var tokenParser = new TokenParser<CsvTokens>(_tokenConfiguration);
 
             do
             {

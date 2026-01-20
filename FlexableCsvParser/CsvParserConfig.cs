@@ -40,10 +40,9 @@ namespace FlexableCsvParser
             WhiteSpaceTrimming = whiteSpaceTrimming;
             StringCacheMaxLength = stringCacheMaxLength;
             
-            TokenConfiguration<CsvTokens> tokenConfiguration;
             if (!Delimiters.AreRFC4180Compliant)
             {
-                tokenConfiguration = new TokenConfigurationBuilder<CsvTokens>()
+                TokenConfiguration = new TokenConfigurationBuilder<CsvTokens>()
                 {
                     { Delimiters.Field, CsvTokens.FieldDelimiter },
                     { Delimiters.EndOfRecord, CsvTokens.EndOfRecord },
@@ -53,17 +52,15 @@ namespace FlexableCsvParser
             }
             else
             {
-                tokenConfiguration = CsvTokens.Configuration;
+                TokenConfiguration = CsvTokens.Configuration;
             }
-            
-            TokenReaderStateMachine = TokenReaderStateMachine<CsvTokens>.For(tokenConfiguration);
         }
 
         public int StringCacheMaxLength { get; set; }
 
         public Delimiters Delimiters { get; }
         
-        internal TokenReaderStateMachine<CsvTokens> TokenReaderStateMachine { get; }
+        internal TokenConfiguration<CsvTokens> TokenConfiguration { get; }
 
         public IncompleteRecordHandling IncompleteRecordHandling { get; set; }
 
