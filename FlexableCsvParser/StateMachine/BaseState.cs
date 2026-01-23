@@ -1,5 +1,4 @@
-﻿using System;
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
 using Tokensharp;
 
 namespace FlexableCsvParser.StateMachine;
@@ -8,43 +7,12 @@ internal abstract class BaseState<T> : IState where T : BaseState<T>, IState, ne
 {
     public abstract ParserState Id { get; }
 
-    public bool TryTransition(TokenType<CsvTokens> token, [NotNullWhen(true)] out IState? nextState)
-    {
-        if (StateLookup.TryGetState(token, out nextState))
-            return true;
+    public bool TryTransition(TokenType<CsvTokens> token, [NotNullWhen(true)] out IState? nextState) =>
+        TryGetNextState(token, out nextState) || TryGetDefault(out nextState);
 
-        return TryGetDefault(out nextState);
-    }
+    protected abstract bool TryGetNextState(TokenType<CsvTokens> token, [NotNullWhen(true)] out IState? nextState);
 
     public abstract bool TryGetDefault([NotNullWhen(true)] out IState? defaultState);
 
-    public IStateLookup StateLookup
-    {
-        get => field ?? throw new InvalidOperationException("StartOfFieldState not initialized");
-        private set;
-    }
-
-    private void Initialize()
-    {
-        var stateLookupBuilder = new StateLookupBuilder();
-        AddStates(stateLookupBuilder);
-        StateLookup = stateLookupBuilder.Build();
-    }
-
-    protected abstract void AddStates(IStateLookupCollection lookupCollection);
-
-    public static T Instance
-    {
-        get
-        {
-            if (field is not null)
-                return field;
-
-            field = new T();
-
-            field.Initialize();
-
-            return field;
-        }
-    }
+    public static T Instance => field ??= new T();
 }
