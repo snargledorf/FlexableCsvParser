@@ -12,6 +12,8 @@ namespace FlexableCsvParser
 {
     public class CsvParser
     {
+        private const int InitialRecordBufferSize = 4096;
+        
         private readonly TextReader _reader;
         private readonly CsvParserConfig _config;
         private readonly bool _trimLeadingWhiteSpace;
@@ -22,7 +24,7 @@ namespace FlexableCsvParser
         private readonly string _quote;
         private readonly int _escapeLength;
 
-        private readonly ReadBuffer _recordBuffer = new(4096);
+        private readonly ReadBuffer _recordBuffer = new(InitialRecordBufferSize);
 
         private int _currentFieldStartIndex;
         private int _escapedQuoteCount;
