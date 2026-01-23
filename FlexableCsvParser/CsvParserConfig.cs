@@ -5,8 +5,8 @@ namespace FlexableCsvParser
 {
     public sealed class CsvParserConfig
     {
-        public static readonly CsvParserConfig RFC4180 = new(Delimiters.RFC4180);
-        public static readonly CsvParserConfig Default = RFC4180;
+        public static readonly CsvParserConfig Rfc4180 = new(Delimiters.Rfc4180);
+        public static readonly CsvParserConfig Default = Rfc4180;
 
         public CsvParserConfig()
             : this(Delimiters.Default)
@@ -40,7 +40,7 @@ namespace FlexableCsvParser
             WhiteSpaceTrimming = whiteSpaceTrimming;
             StringCacheMaxLength = stringCacheMaxLength;
             
-            if (!Delimiters.AreRFC4180Compliant)
+            if (!Delimiters.AreRfc4180Compliant)
             {
                 TokenConfiguration = new TokenConfigurationBuilder<CsvTokens>()
                 {

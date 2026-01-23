@@ -4,8 +4,8 @@ namespace FlexableCsvParser
 {
     public sealed record Delimiters
     {
-        public static readonly Delimiters RFC4180 = new();
-        public static readonly Delimiters Default = RFC4180;
+        public static readonly Delimiters Rfc4180 = new();
+        public static readonly Delimiters Default = Rfc4180;
 
         public Delimiters(string fieldDelimiter = ",", string endOfRecord = "\r\n", string quote = "\"", string escape = "\"\"")
         {
@@ -14,7 +14,7 @@ namespace FlexableCsvParser
             Quote = quote;
             Escape = escape;
 
-            AreRFC4180Compliant = Field == ","
+            AreRfc4180Compliant = Field == ","
                 && EndOfRecord == "\r\n"
                 && Quote == "\""
                 && Escape == "\"\"";
@@ -33,6 +33,6 @@ namespace FlexableCsvParser
         public string EndOfRecord { get; }
         public string Quote { get; }
         public string Escape { get; }
-        public bool AreRFC4180Compliant { get; }
+        public bool AreRfc4180Compliant { get; }
     }
 }

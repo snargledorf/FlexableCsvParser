@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Buffers;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -39,8 +40,10 @@ namespace FlexableCsvParser
 
         private uint _recordCount;
         private int _fieldCount;
-        
+
         private readonly TokenConfiguration<CsvTokens> _tokenConfiguration;
+
+        public int FieldCount => _fieldCount;
 
         public CsvParser(TextReader reader, int recordLength)
             : this(reader, recordLength, CsvParserConfig.Default)
@@ -70,13 +73,16 @@ namespace FlexableCsvParser
             _stringPool = new StringPool(config.StringCacheMaxLength);
         }
 
-        public ValueTask<int> ReadRecordAsync(Memory<string> record)
+        public ValueTask<int> ReadRecordAsync(Memory<string> record, CancellationToken cancellationToken = default)
         {
             return new ValueTask<int>(Task.Factory.StartNew((state) =>
             {
-                (CsvParser parser, Memory<string> r) = ((CsvParser, Memory<string>))state;
-                return parser.ReadRecord(r.Span);
-            }, (this, record), CancellationToken.None, TaskCreationOptions.DenyChildAttach, TaskScheduler.Default));
+                if (state is (CsvParser parser, Memory<string> recordMemory))
+                    return parser.ReadRecord(recordMemory.Span);
+                
+                Debug.Assert(false, "Invalid state");
+                return -1;
+            }, (this, record), cancellationToken, TaskCreationOptions.DenyChildAttach, TaskScheduler.Default));
         }
 
         public int ReadRecord(Span<string> record)
@@ -95,8 +101,6 @@ namespace FlexableCsvParser
 
             return 0;
         }
-
-        public int FieldCount => _fieldCount;
 
         public string? GetString(int fieldIndex)
         {
@@ -124,13 +128,11 @@ namespace FlexableCsvParser
                 }
             }
 
-            ref RecordFieldInfo fieldInfo = ref _currentRecordFields.AsSpan()[fieldIndex];
+            ref RecordFieldInfo fieldInfo = ref _currentRecordFields[fieldIndex];
             if (fieldInfo.Length == 0)
                 return string.Empty;
 
-            ReadOnlySpan<char> recordBuffer = _recordBuffer.Chars[.._recordBufferObserved];
-
-            ReadOnlySpan<char> fieldSpan = recordBuffer.Slice(fieldInfo.StartIndex, fieldInfo.Length);
+            ReadOnlySpan<char> fieldSpan = _recordBuffer.Chars.Slice(fieldInfo.StartIndex, fieldInfo.Length);
 
             if (fieldInfo.EscapedQuoteCount == 0)
                 return _stringPool.GetString(fieldSpan);
@@ -316,9 +318,9 @@ namespace FlexableCsvParser
                 throw new InvalidDataException($"Record is too long: {string.Join(", ", Enumerable.Range(0, _fieldCount).Select(GetString))}");
             
             _fieldLength += _leadingWhiteSpaceLength;
-
-            var fieldInfo = new RecordFieldInfo(_currentFieldStartIndex, _fieldLength, _escapedQuoteCount);
-            _currentRecordFields[_fieldCount++] = fieldInfo;
+            
+            ref RecordFieldInfo fieldInfo = ref _currentRecordFields[_fieldCount++];
+            fieldInfo = new RecordFieldInfo(_currentFieldStartIndex, _fieldLength, _escapedQuoteCount);
 
             _recordBufferObserved += _fieldExaminedLength;
             _currentFieldStartIndex = _recordBufferObserved;
