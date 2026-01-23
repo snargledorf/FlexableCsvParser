@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using SwiftState;
+using FlexableCsvParser.StateMachine;
 using Tokensharp;
 
 namespace FlexableCsvParser
@@ -15,10 +15,9 @@ namespace FlexableCsvParser
         private readonly CsvParserConfig _config;
         private readonly bool _trimLeadingWhiteSpace;
         private readonly bool _trimTrailingWhiteSpace;
-
-        private static readonly State<TokenType<CsvTokens>, ParserState> StartState =
-            CsvParserStateMachineFactory.StartState;
-
+        
+        private static readonly IState StartState = StartOfFieldState.Instance;
+        
         private readonly string _quote;
         private readonly int _escapeLength;
 
@@ -175,7 +174,7 @@ namespace FlexableCsvParser
 
         public bool Read()
         {
-            State<TokenType<CsvTokens>, ParserState> currentState = StartState;
+            IState currentState = StartState;
 
             _fieldCount = 0;
             _currentFieldStartIndex = 0;
@@ -199,9 +198,9 @@ namespace FlexableCsvParser
                     tokenBuffer = tokenBuffer[lexemeLength..];
                     _fieldExaminedLength += lexemeLength;
 
-                    State<TokenType<CsvTokens>, ParserState> previousState = currentState;
+                    IState previousState = currentState;
 
-                    if (currentState.TryTransition(type, out State<TokenType<CsvTokens>, ParserState>? newState))
+                    if (currentState.TryTransition(type, out IState? newState))
                     {
                         currentState = newState;
                         switch (currentState.Id)
@@ -280,31 +279,13 @@ namespace FlexableCsvParser
                     }
                     else
                     {
-                        switch (currentState.Id)
-                        {
-                            case ParserState.QuotedFieldText:
-                            case ParserState.UnquotedFieldText:
-                                _fieldLength += lexemeLength;
-                                break;
-
-                            case ParserState.EscapeAfterLeadingEscape: // I don't think this will ever be hit???
-                                _escapedQuoteCount++;
-                                _fieldLength += lexemeLength;
-                                break;
-
-                            default:
-                                ThrowUnexpectedTokenException(currentState, tokenBuffer);
-                                break;
-                        }
+                        ThrowUnexpectedTokenException(currentState, tokenBuffer);
                     }
                 }
             } while (!_recordBuffer.EndOfReader);
 
-            if (currentState == StartState)
-                return false;
-
             bool missingClosingQuote = currentState.Id == ParserState.QuotedFieldText;
-            if (!missingClosingQuote && currentState.TryGetDefault(out State<TokenType<CsvTokens>, ParserState>? defaultState))
+            if (!missingClosingQuote && currentState.TryGetDefault(out IState? defaultState))
                 missingClosingQuote = defaultState.Id == ParserState.QuotedFieldText;
 
             if (missingClosingQuote)
@@ -314,7 +295,7 @@ namespace FlexableCsvParser
             return true;
         }
 
-        private void ThrowUnexpectedTokenException(State<TokenType<CsvTokens>, ParserState> state, ReadOnlySpan<char> tokenBuffer)
+        private void ThrowUnexpectedTokenException(IState state, ReadOnlySpan<char> tokenBuffer)
         {
             throw new InvalidDataException($"Unexpected token: State = {state}, Buffer = {tokenBuffer}, Record count = {_recordCount}");
         }

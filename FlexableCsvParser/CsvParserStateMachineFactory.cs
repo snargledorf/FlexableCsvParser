@@ -10,7 +10,7 @@ namespace FlexableCsvParser
 
         private static State<TokenType<CsvTokens>, ParserState> BuildParserStateMachine()
         {
-            var startStateBuilder = new StateBuilder<TokenType<CsvTokens>, ParserState>(ParserState.Start);
+            var startStateBuilder = new StateBuilder<TokenType<CsvTokens>, ParserState>(ParserState.StartOfField);
             
             BuildStartOfFieldTransitions(startStateBuilder);
             

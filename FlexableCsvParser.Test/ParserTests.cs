@@ -136,7 +136,7 @@ namespace FlexableCsvParser.Test
         [TestMethod]
         public async Task SimpleRFC4180QuotedTextInQuotedFieldCsv()
         {
-            const string Csv = "123, \"\"\"Bar\"\"\" ,ABC";
+            const string Csv = """"123, """Bar""" ,ABC"""";
 
             var expectedRecord = new[]
             {
