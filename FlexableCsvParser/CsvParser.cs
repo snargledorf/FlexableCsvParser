@@ -178,7 +178,7 @@ namespace FlexableCsvParser
 
         public bool Read()
         {
-            IState currentState = StartState;
+            IState? currentState = StartState;
 
             _fieldCount = 0;
             _currentFieldStartIndex = 0;
@@ -199,9 +199,8 @@ namespace FlexableCsvParser
 
                     IState previousState = currentState;
 
-                    if (currentState.TryTransition(type, out IState? newState))
+                    if (currentState.TryTransition(type, out currentState))
                     {
-                        currentState = newState;
                         switch (currentState.Id)
                         {
                             case ParserState.UnquotedFieldText:
@@ -252,8 +251,7 @@ namespace FlexableCsvParser
                                 break;
 
                             case ParserState.UnexpectedToken:
-                                ThrowUnexpectedTokenException(previousState, tokenBuffer);
-                                break;
+                                throw new InvalidDataException($"Unexpected token: State = {previousState}, Buffer = {tokenBuffer}, Record count = {_recordCount}");
 
                             case ParserState.QuotedFieldClosingQuoteTrailingWhiteSpace:
                             case ParserState.QuotedFieldClosingQuote:
@@ -278,7 +276,7 @@ namespace FlexableCsvParser
                     }
                     else
                     {
-                        ThrowUnexpectedTokenException(currentState, tokenBuffer);
+                        throw new InvalidDataException($"Unexpected token: State = {previousState}, Buffer = {tokenBuffer}, Record count = {_recordCount}");
                     }
                 }
             } while (_recordBuffer.Read(_reader));
@@ -295,11 +293,6 @@ namespace FlexableCsvParser
 
             CheckRecord();
             return true;
-        }
-
-        private void ThrowUnexpectedTokenException(IState state, ReadOnlySpan<char> tokenBuffer)
-        {
-            throw new InvalidDataException($"Unexpected token: State = {state}, Buffer = {tokenBuffer}, Record count = {_recordCount}");
         }
 
         private void CheckRecord()
