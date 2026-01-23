@@ -19,10 +19,10 @@ internal class ReadBuffer(int initialBufferSize) : IDisposable
 
     public int Length => _length;
 
-    public void Read(TextReader reader)
+    public bool Read(TextReader reader)
     {
         if (_endOfReader)
-            return;
+            return false;
         
         do
         {
@@ -37,12 +37,14 @@ internal class ReadBuffer(int initialBufferSize) : IDisposable
             if (charsRead == 0)
             {
                 _endOfReader = true;
-                return;
+                return _length > 0;
             }
 
             _length += charsRead;
 
         } while (_length < _buffer.Length);
+
+        return _length > 0;
     }
 
     public void AdvanceBuffer(int charsConsumed)

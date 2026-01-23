@@ -187,10 +187,6 @@ namespace FlexableCsvParser
 
             do
             {
-                _recordBuffer.Read(_reader);
-                if (_recordBuffer is { Length: 0, EndOfReader: true })
-                    return false;
-
                 int resumeLocationForTokenBuffer = _recordBufferObserved + _fieldExaminedLength;
                 ReadOnlySpan<char> tokenBuffer = _recordBuffer.Chars[resumeLocationForTokenBuffer..];
                 var tokenParser = new TokenParser<CsvTokens>(_tokenConfiguration);
@@ -283,7 +279,10 @@ namespace FlexableCsvParser
                         ThrowUnexpectedTokenException(currentState, tokenBuffer);
                     }
                 }
-            } while (!_recordBuffer.EndOfReader);
+            } while (_recordBuffer.Read(_reader));
+
+            if (_recordBuffer is { Length: 0, EndOfReader: true })
+                return false;
 
             bool missingClosingQuote = currentState.Id == ParserState.QuotedFieldText;
             if (!missingClosingQuote && currentState.TryGetDefault(out IState? defaultState))
