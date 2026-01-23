@@ -26,7 +26,7 @@
 
   <ItemGroup>
     <PackageReference Include="SwiftState" Version="3.0.1" />
-    <PackageReference Include="Tokensharp" Version="4.1.0" />
+    <PackageReference Include="Tokensharp" Version="4.2.0" />
   </ItemGroup>
 
 </Project>
