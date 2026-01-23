@@ -90,8 +90,8 @@ namespace FlexableCsvParser
             if (Read())
             {
                 int bufferLength = Math.Min(record.Length, _expectedRecordFieldCount);
-                if (bufferLength > FieldCount && _config.IncompleteRecordHandling == IncompleteRecordHandling.TruncateRecord)
-                    bufferLength = FieldCount;
+                if (bufferLength > _fieldCount && _config.IncompleteRecordHandling == IncompleteRecordHandling.TruncateRecord)
+                    bufferLength = _fieldCount;
 
                 for (int fieldIndex = 0; fieldIndex < bufferLength; fieldIndex++)
                     record[fieldIndex] = GetString(fieldIndex)!;
@@ -107,7 +107,7 @@ namespace FlexableCsvParser
             if (fieldIndex >= _expectedRecordFieldCount)
                 throw new ArgumentOutOfRangeException(nameof(fieldIndex));
 
-            if (fieldIndex >= FieldCount)
+            if (fieldIndex >= _fieldCount)
             {
                 switch (_config.IncompleteRecordHandling)
                 {
@@ -185,8 +185,6 @@ namespace FlexableCsvParser
             _recordBuffer.AdvanceBuffer(_recordBufferObserved);
             _recordBufferObserved = 0;
 
-            var tokenParser = new TokenParser<CsvTokens>(_tokenConfiguration);
-
             do
             {
                 _recordBuffer.Read(_reader);
@@ -195,6 +193,7 @@ namespace FlexableCsvParser
 
                 int resumeLocationForTokenBuffer = _recordBufferObserved + _fieldExaminedLength;
                 ReadOnlySpan<char> tokenBuffer = _recordBuffer.Chars[resumeLocationForTokenBuffer..];
+                var tokenParser = new TokenParser<CsvTokens>(_tokenConfiguration);
                 while (tokenParser.TryParseToken(tokenBuffer, !_recordBuffer.EndOfReader, out TokenType<CsvTokens>? type, out int lexemeLength))
                 {
                     tokenBuffer = tokenBuffer[lexemeLength..];
@@ -306,7 +305,7 @@ namespace FlexableCsvParser
         {
             AddCurrentField();
 
-            if (FieldCount < _expectedRecordFieldCount && _config.IncompleteRecordHandling == IncompleteRecordHandling.ThrowException)
+            if (_fieldCount < _expectedRecordFieldCount && _config.IncompleteRecordHandling == IncompleteRecordHandling.ThrowException)
                 throw new InvalidDataException($"Record is incomplete: {string.Join(", ", Enumerable.Range(0, _fieldCount).Select(GetString))}");
             
             _recordCount++;
