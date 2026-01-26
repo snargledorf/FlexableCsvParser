@@ -9,7 +9,7 @@ internal class LeadingWhiteSpaceState : BaseState<LeadingWhiteSpaceState>
 
     protected override bool TryGetNextState(TokenType<CsvTokens> token, [NotNullWhen(true)] out IState? nextState)
     {
-        if (token == CsvTokens.Text || token == CsvTokens.Number)
+        if (token == CsvTokens.Text)
         {
             nextState = UnquotedFieldTextState.Instance;
             return true;

@@ -42,13 +42,13 @@ namespace FlexableCsvParser
             
             if (!Delimiters.AreRfc4180Compliant)
             {
-                TokenConfiguration = new TokenConfigurationBuilder<CsvTokens>()
-                {
-                    { Delimiters.Field, CsvTokens.FieldDelimiter },
-                    { Delimiters.EndOfRecord, CsvTokens.EndOfRecord },
-                    { Delimiters.Quote, CsvTokens.Quote },
-                    { Delimiters.Escape, CsvTokens.Escape },
-                }.Build();
+                TokenConfiguration = new TokenConfigurationBuilder<CsvTokens>(
+                [
+                    new LexemeToTokenType<CsvTokens>(Delimiters.Field, CsvTokens.FieldDelimiter),
+                    new LexemeToTokenType<CsvTokens>(Delimiters.EndOfRecord, CsvTokens.EndOfRecord),
+                    new LexemeToTokenType<CsvTokens>(Delimiters.Quote, CsvTokens.Quote),
+                    new LexemeToTokenType<CsvTokens>(Delimiters.Escape, CsvTokens.Escape),
+                ]) { NumbersAreText = true }.Build();
             }
             else
             {

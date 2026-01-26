@@ -11,11 +11,11 @@ internal record CsvTokens(string Identifier) : TokenType<CsvTokens>(Identifier),
     
     public static CsvTokens Create(string lexeme) => new(lexeme);
 
-    public static TokenConfiguration<CsvTokens> Configuration { get; } = new TokenConfigurationBuilder<CsvTokens>
-    {
-        { ",", FieldDelimiter },
-        { "\r\n", EndOfRecord },
-        { "\"", Quote },
-        { "\"\"",  Escape },
-    }.Build();
+    public static TokenConfiguration<CsvTokens> Configuration { get; } = new TokenConfigurationBuilder<CsvTokens>(
+    [
+        new LexemeToTokenType<CsvTokens>(",", FieldDelimiter),
+        new LexemeToTokenType<CsvTokens>("\r\n", EndOfRecord),
+        new LexemeToTokenType<CsvTokens>("\"", Quote),
+        new LexemeToTokenType<CsvTokens>("\"\"", Escape),
+    ]) { NumbersAreText = true }.Build();
 }
