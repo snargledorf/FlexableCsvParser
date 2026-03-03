@@ -7,7 +7,7 @@ internal class QuotedFieldClosingQuoteState : BaseState<QuotedFieldClosingQuoteS
 {
     public override ParserState Id => ParserState.QuotedFieldClosingQuote;
 
-    protected override bool TryGetNextState(TokenType<CsvTokens> token, [NotNullWhen(true)] out IState? nextState)
+    protected override bool TryGetNextState(TokenType<CsvTokens> token, [NotNullWhen(true)] out BaseState? nextState)
     {
         if (token == CsvTokens.WhiteSpace)
         {
@@ -30,7 +30,7 @@ internal class QuotedFieldClosingQuoteState : BaseState<QuotedFieldClosingQuoteS
         return TryGetDefault(out nextState);
     }
 
-    public override bool TryGetDefault([NotNullWhen(true)] out IState? defaultState)
+    public override bool TryGetDefault([NotNullWhen(true)] out BaseState? defaultState)
     {
         defaultState = EndOfFieldState.Instance;
         return true;

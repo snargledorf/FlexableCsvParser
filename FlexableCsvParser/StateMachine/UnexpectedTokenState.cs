@@ -8,12 +8,12 @@ internal class UnexpectedTokenState : BaseState<UnexpectedTokenState>
 {
     public override ParserState Id => ParserState.UnexpectedToken;
 
-    protected override bool TryGetNextState(TokenType<CsvTokens> token, [NotNullWhen(true)] out IState? nextState)
+    protected override bool TryGetNextState(TokenType<CsvTokens> token, [NotNullWhen(true)] out BaseState? nextState)
     {
         throw new NotSupportedException("Unexpected Token");
     }
 
-    public override bool TryGetDefault([NotNullWhen(true)] out IState? defaultState)
+    public override bool TryGetDefault([NotNullWhen(true)] out BaseState? defaultState)
     {
         throw new NotSupportedException("Unexpected Token");
     }

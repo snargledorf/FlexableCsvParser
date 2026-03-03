@@ -3,16 +3,19 @@ using Tokensharp;
 
 namespace FlexableCsvParser.StateMachine;
 
-internal abstract class BaseState<T> : IState where T : BaseState<T>, IState, new()
+internal abstract class BaseState
 {
     public abstract ParserState Id { get; }
 
-    public bool TryTransition(TokenType<CsvTokens> token, [NotNullWhen(true)] out IState? nextState) =>
+    public bool TryTransition(TokenType<CsvTokens> token, [NotNullWhen(true)] out BaseState? nextState) =>
         TryGetNextState(token, out nextState) || TryGetDefault(out nextState);
 
-    protected abstract bool TryGetNextState(TokenType<CsvTokens> token, [NotNullWhen(true)] out IState? nextState);
+    protected abstract bool TryGetNextState(TokenType<CsvTokens> token, [NotNullWhen(true)] out BaseState? nextState);
 
-    public abstract bool TryGetDefault([NotNullWhen(true)] out IState? defaultState);
+    public abstract bool TryGetDefault([NotNullWhen(true)] out BaseState? defaultState);
+}
 
-    public static T Instance => field ??= new T();
+internal abstract class BaseState<T> : BaseState where T : BaseState, new()
+{
+    public static readonly T Instance = new();
 }

@@ -7,7 +7,7 @@ internal class QuotedFieldEscapeState : BaseState<QuotedFieldEscapeState>
 {
     public override ParserState Id => ParserState.QuotedFieldEscape;
 
-    protected override bool TryGetNextState(TokenType<CsvTokens> token, [NotNullWhen(true)] out IState? nextState)
+    protected override bool TryGetNextState(TokenType<CsvTokens> token, [NotNullWhen(true)] out BaseState? nextState)
     {
         if (token == CsvTokens.Quote)
         {
@@ -17,14 +17,14 @@ internal class QuotedFieldEscapeState : BaseState<QuotedFieldEscapeState>
         
         if (token == CsvTokens.Escape)
         {
-            nextState = Instance;
+            nextState = this;
             return true;
         }
 
         return TryGetDefault(out nextState);
     }
 
-    public override bool TryGetDefault([NotNullWhen(true)] out IState? defaultState)
+    public override bool TryGetDefault([NotNullWhen(true)] out BaseState? defaultState)
     {
         defaultState = QuotedFieldTextState.Instance;
         return true;

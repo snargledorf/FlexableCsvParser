@@ -7,14 +7,14 @@ namespace FlexableCsvParser.StateMachine;
 
 internal interface IStateLookup
 {
-    public bool TryGetState(TokenType<CsvTokens> token, [NotNullWhen(true)] out IState? state);
+    public bool TryGetState(TokenType<CsvTokens> token, [NotNullWhen(true)] out BaseState? state);
 }
 
 internal class StateLookupBuilder : IStateLookupCollection
 {
-    private readonly Dictionary<TokenType<CsvTokens>, IState> _states = new();
+    private readonly Dictionary<TokenType<CsvTokens>, BaseState> _states = new();
 
-    public IStateLookupCollection Add(CsvTokens token, IState state)
+    public IStateLookupCollection Add(CsvTokens token, BaseState state)
     {
         _states.Add(token, state);
         return this;
@@ -26,9 +26,9 @@ internal class StateLookupBuilder : IStateLookupCollection
     }
 }
 
-internal class StateLookup(FrozenDictionary<TokenType<CsvTokens>, IState> states) : IStateLookup
+internal class StateLookup(FrozenDictionary<TokenType<CsvTokens>, BaseState> states) : IStateLookup
 {
-    public bool TryGetState(TokenType<CsvTokens> token, [NotNullWhen(true)] out IState? state)
+    public bool TryGetState(TokenType<CsvTokens> token, [NotNullWhen(true)] out BaseState? state)
     {
         return states.TryGetValue(token, out state);
     }

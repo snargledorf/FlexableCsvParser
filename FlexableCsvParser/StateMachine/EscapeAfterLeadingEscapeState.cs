@@ -7,11 +7,11 @@ internal class EscapeAfterLeadingEscapeState : BaseState<EscapeAfterLeadingEscap
 {
     public override ParserState Id => ParserState.EscapeAfterLeadingEscape;
 
-    protected override bool TryGetNextState(TokenType<CsvTokens> token, [NotNullWhen(true)] out IState? nextState)
+    protected override bool TryGetNextState(TokenType<CsvTokens> token, [NotNullWhen(true)] out BaseState? nextState)
     {
         if (token == CsvTokens.Escape)
         {
-            nextState = Instance;
+            nextState = this;
             return true;
         }
         
@@ -42,7 +42,7 @@ internal class EscapeAfterLeadingEscapeState : BaseState<EscapeAfterLeadingEscap
         return TryGetDefault(out nextState);
     }
 
-    public override bool TryGetDefault([NotNullWhen(true)] out IState? defaultState)
+    public override bool TryGetDefault([NotNullWhen(true)] out BaseState? defaultState)
     {
         defaultState = EndOfFieldState.Instance;
         return true;

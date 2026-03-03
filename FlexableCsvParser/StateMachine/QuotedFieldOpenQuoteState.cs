@@ -7,7 +7,7 @@ internal class QuotedFieldOpenQuoteState : BaseState<QuotedFieldOpenQuoteState>
 {
     public override ParserState Id => ParserState.QuotedFieldOpenQuote;
 
-    protected override bool TryGetNextState(TokenType<CsvTokens> token, [NotNullWhen(true)] out IState? nextState)
+    protected override bool TryGetNextState(TokenType<CsvTokens> token, [NotNullWhen(true)] out BaseState? nextState)
     {
         if (token == CsvTokens.Quote)
         {
@@ -30,7 +30,7 @@ internal class QuotedFieldOpenQuoteState : BaseState<QuotedFieldOpenQuoteState>
         return TryGetDefault(out nextState);
     }
 
-    public override bool TryGetDefault([NotNullWhen(true)] out IState? defaultState)
+    public override bool TryGetDefault([NotNullWhen(true)] out BaseState? defaultState)
     {
         defaultState = QuotedFieldTextState.Instance;
         return true;

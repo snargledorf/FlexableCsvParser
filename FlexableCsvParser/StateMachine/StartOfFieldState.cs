@@ -3,11 +3,11 @@ using Tokensharp;
 
 namespace FlexableCsvParser.StateMachine;
 
-internal class StartOfFieldState<T> : BaseState<T> where T : StartOfFieldState<T>, IState, new()
+internal class StartOfFieldState<T> : BaseState<T> where T : BaseState, new()
 {
     public override ParserState Id => ParserState.StartOfField;
 
-    protected override bool TryGetNextState(TokenType<CsvTokens> token, [NotNullWhen(true)] out IState? nextState)
+    protected override bool TryGetNextState(TokenType<CsvTokens> token, [NotNullWhen(true)] out BaseState? nextState)
     {
         if (token == CsvTokens.Text)
         {
@@ -48,7 +48,7 @@ internal class StartOfFieldState<T> : BaseState<T> where T : StartOfFieldState<T
         return TryGetDefault(out nextState);
     }
 
-    public override bool TryGetDefault([NotNullWhen(true)] out IState? defaultState)
+    public override bool TryGetDefault([NotNullWhen(true)] out BaseState? defaultState)
     {
         defaultState = null;
         return false;

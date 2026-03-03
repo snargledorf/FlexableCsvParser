@@ -7,7 +7,7 @@ internal class UnquotedFieldTrailingWhiteSpaceState : BaseState<UnquotedFieldTra
 {
     public override ParserState Id => ParserState.UnquotedFieldTrailingWhiteSpace;
 
-    protected override bool TryGetNextState(TokenType<CsvTokens> token, [NotNullWhen(true)] out IState? nextState)
+    protected override bool TryGetNextState(TokenType<CsvTokens> token, [NotNullWhen(true)] out BaseState? nextState)
     {
         if (token == CsvTokens.Text)
         {
@@ -36,7 +36,7 @@ internal class UnquotedFieldTrailingWhiteSpaceState : BaseState<UnquotedFieldTra
         return TryGetDefault(out nextState);
     }
 
-    public override bool TryGetDefault([NotNullWhen(true)] out IState? defaultState)
+    public override bool TryGetDefault([NotNullWhen(true)] out BaseState? defaultState)
     {
         defaultState = EndOfFieldState.Instance;
         return true;

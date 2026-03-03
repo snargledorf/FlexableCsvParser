@@ -2,5 +2,5 @@
 
 internal interface IStateLookupCollection
 {
-    IStateLookupCollection Add(CsvTokens token, IState state);
+    IStateLookupCollection Add(CsvTokens token, BaseState state);
 }

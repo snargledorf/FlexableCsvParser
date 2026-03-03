@@ -7,7 +7,7 @@ internal class UnquotedFieldTextState : BaseState<UnquotedFieldTextState>
 {
     public override ParserState Id => ParserState.UnquotedFieldText;
 
-    protected override bool TryGetNextState(TokenType<CsvTokens> token, [NotNullWhen(true)] out IState? nextState)
+    protected override bool TryGetNextState(TokenType<CsvTokens> token, [NotNullWhen(true)] out BaseState? nextState)
     {
         if (token == CsvTokens.FieldDelimiter)
         {
@@ -30,9 +30,9 @@ internal class UnquotedFieldTextState : BaseState<UnquotedFieldTextState>
         return TryGetDefault(out nextState);
     }
 
-    public override bool TryGetDefault([NotNullWhen(true)] out IState? defaultState)
+    public override bool TryGetDefault([NotNullWhen(true)] out BaseState? defaultState)
     {
-        defaultState = Instance;
+        defaultState = this;
         return true;
     }
 }

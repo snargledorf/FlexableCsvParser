@@ -7,7 +7,7 @@ internal class LeadingWhiteSpaceState : BaseState<LeadingWhiteSpaceState>
 {
     public override ParserState Id => ParserState.LeadingWhiteSpace;
 
-    protected override bool TryGetNextState(TokenType<CsvTokens> token, [NotNullWhen(true)] out IState? nextState)
+    protected override bool TryGetNextState(TokenType<CsvTokens> token, [NotNullWhen(true)] out BaseState? nextState)
     {
         if (token == CsvTokens.Text)
         {
@@ -48,7 +48,7 @@ internal class LeadingWhiteSpaceState : BaseState<LeadingWhiteSpaceState>
         return TryGetDefault(out nextState);
     }
 
-    public override bool TryGetDefault([NotNullWhen(true)] out IState? defaultState)
+    public override bool TryGetDefault([NotNullWhen(true)] out BaseState? defaultState)
     {
         defaultState = EndOfFieldState.Instance;
         return true;
