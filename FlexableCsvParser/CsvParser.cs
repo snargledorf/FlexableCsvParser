@@ -148,25 +148,23 @@ namespace FlexableCsvParser
             {
                 Span<char> strBufferSpan = strBuffer.AsSpan()[..fieldUpdatedLength];
                 ReadOnlySpan<char> resultSpan = strBufferSpan;
-                var tokenParser = new TokenParser<CsvTokens>(_tokenConfiguration);
-                while (!fieldSpan.IsEmpty)
+                var tokenParser = new TokenParser<CsvTokens>(fieldSpan, _tokenConfiguration);
+                while (tokenParser.Read())
                 {
-                    if (!tokenParser.TryParseToken(fieldSpan, false, out TokenType<CsvTokens>? type, out ReadOnlySpan<char> lexeme))
-                        throw new Exception("Unable to parse field token");
-
-                    if (type == CsvTokens.Escape)
+                    if (tokenParser.TokenType == CsvTokens.Escape)
                     {
                         _quote.CopyTo(strBufferSpan);
                         strBufferSpan = strBufferSpan[_quote.Length..];
                     }
                     else
                     {
-                        lexeme.CopyTo(strBufferSpan);
-                        strBufferSpan = strBufferSpan[lexeme.Length..];
+                        tokenParser.Lexeme.CopyTo(strBufferSpan);
+                        strBufferSpan = strBufferSpan[tokenParser.Lexeme.Length..];
                     }
-
-                    fieldSpan = fieldSpan[lexeme.Length..];
                 }
+                
+                if (tokenParser.CharsConsumed != fieldSpan.Length)
+                    throw new Exception("Unable to parse field token");
 
                 return _stringPool.GetString(resultSpan);
             }
@@ -187,25 +185,25 @@ namespace FlexableCsvParser
             _recordBuffer.AdvanceBuffer(_recordBufferObserved);
             _recordBufferObserved = 0;
 
+            var tokenParserState = new TokenParserState<CsvTokens>(_tokenConfiguration);
             do
             {
                 int resumeLocationForTokenBuffer = _recordBufferObserved + _fieldExaminedLength;
                 ReadOnlySpan<char> tokenBuffer = _recordBuffer.Chars[resumeLocationForTokenBuffer..];
-                var tokenParser = new TokenParser<CsvTokens>(_tokenConfiguration);
-                while (tokenParser.TryParseToken(tokenBuffer, !_recordBuffer.EndOfReader, out TokenType<CsvTokens>? type, out int lexemeLength))
+                var tokenParser = new TokenParser<CsvTokens>(tokenBuffer, !_recordBuffer.EndOfReader, tokenParserState);
+                while (tokenParser.Read())
                 {
-                    tokenBuffer = tokenBuffer[lexemeLength..];
-                    _fieldExaminedLength += lexemeLength;
+                    _fieldExaminedLength += tokenParser.Lexeme.Length;
 
                     IState previousState = currentState;
 
-                    if (currentState.TryTransition(type, out currentState))
+                    if (currentState.TryTransition(tokenParser.TokenType, out currentState))
                     {
                         switch (currentState.Id)
                         {
                             case ParserState.UnquotedFieldText:
                             case ParserState.QuotedFieldText:
-                                _fieldLength += lexemeLength + _leadingWhiteSpaceLength + _possibleTrailingWhiteSpaceLength;
+                                _fieldLength += tokenParser.Lexeme.Length + _leadingWhiteSpaceLength + _possibleTrailingWhiteSpaceLength;
                                 _leadingWhiteSpaceLength = _possibleTrailingWhiteSpaceLength = 0;
                                 break;
 
@@ -224,7 +222,7 @@ namespace FlexableCsvParser
 
                             case ParserState.QuotedFieldEscape:
                                 _escapedQuoteCount++;
-                                _fieldLength += lexemeLength + _leadingWhiteSpaceLength + _possibleTrailingWhiteSpaceLength;
+                                _fieldLength += tokenParser.Lexeme.Length + _leadingWhiteSpaceLength + _possibleTrailingWhiteSpaceLength;
                                 _leadingWhiteSpaceLength = _possibleTrailingWhiteSpaceLength = 0;
                                 break;
 
@@ -233,9 +231,9 @@ namespace FlexableCsvParser
                                 // Only store the leading whitespace if there is a possiblity we might need it
                                 // IE. If trim leading isn't enabled
                                 if (_trimLeadingWhiteSpace)
-                                    _currentFieldStartIndex += lexemeLength;
+                                    _currentFieldStartIndex += tokenParser.Lexeme.Length;
                                 else
-                                    _leadingWhiteSpaceLength = lexemeLength;
+                                    _leadingWhiteSpaceLength = tokenParser.Lexeme.Length;
                                 break;
 
                             case ParserState.QuotedFieldTrailingWhiteSpace:
@@ -244,9 +242,9 @@ namespace FlexableCsvParser
                                 // This is so if we do end up with more field text, we can append the whitespace
                                 // since that means it isn't trailing
                                 if (_trimTrailingWhiteSpace)
-                                    _possibleTrailingWhiteSpaceLength = lexemeLength;
+                                    _possibleTrailingWhiteSpaceLength = tokenParser.Lexeme.Length;
                                 else
-                                    _fieldLength += lexemeLength;
+                                    _fieldLength += tokenParser.Lexeme.Length;
 
                                 break;
 
@@ -269,7 +267,7 @@ namespace FlexableCsvParser
                                 break;
 
                             default:
-                                _currentFieldStartIndex += lexemeLength + _leadingWhiteSpaceLength;
+                                _currentFieldStartIndex += tokenParser.Lexeme.Length + _leadingWhiteSpaceLength;
                                 _leadingWhiteSpaceLength = 0;
                                 break;
                         }
@@ -279,6 +277,8 @@ namespace FlexableCsvParser
                         throw new InvalidDataException($"Unexpected token: State = {previousState}, Buffer = {tokenBuffer}, Record count = {_recordCount}");
                     }
                 }
+
+                tokenParserState = tokenParser.CurrentState;
             } while (_recordBuffer.Read(_reader));
 
             if (_recordBuffer is { Length: 0, EndOfReader: true })
