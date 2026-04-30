@@ -1,13 +1,12 @@
 using System;
-using System.Buffers;
 using System.Diagnostics;
 using System.IO;
 
 namespace FlexableCsvParser;
 
-internal class ReadBuffer(int initialBufferSize) : IDisposable
+internal class ReadBuffer(int initialBufferSize)
 {
-    private char[] _buffer = new char[initialBufferSize];
+    private Memory<char> _buffer = new char[initialBufferSize];
 
     private int _index;
     private int _length;
@@ -15,7 +14,7 @@ internal class ReadBuffer(int initialBufferSize) : IDisposable
 
     public bool EndOfReader => _endOfReader;
 
-    public ReadOnlySpan<char> Chars => _buffer.AsSpan(_index, _length);
+    public ReadOnlyMemory<char> Chars => _buffer.Slice(_index, _length);
 
     public int Length => _length;
 
@@ -26,11 +25,15 @@ internal class ReadBuffer(int initialBufferSize) : IDisposable
         
         do
         {
-            Span<char> readBuffer = _buffer.AsSpan(_index + _length);
+            Span<char> bufferSpan = _buffer.Span;
+            
+            int startIndex = _index + _length;
+            Span<char> readBuffer = bufferSpan[startIndex..];
+            
             if (readBuffer.Length == 0)
             {
                 CheckBuffer();
-                readBuffer = _buffer.AsSpan(_length);
+                readBuffer = bufferSpan[_length..];
             }
             
             int charsRead = reader.Read(readBuffer);
@@ -59,30 +62,19 @@ internal class ReadBuffer(int initialBufferSize) : IDisposable
     {
         if (_length == _buffer.Length)
         {
-            char[] oldBuffer = _buffer;
+            Memory<char> oldBuffer = _buffer;
                 
             int newBufferLength = _buffer.Length < (int.MaxValue / 2) ? _buffer.Length * 2 : int.MaxValue;
             var newBuffer = new char[newBufferLength];
                 
-            oldBuffer.AsSpan(0, _length).CopyTo(newBuffer);
+            oldBuffer.Span[.._length].CopyTo(newBuffer);
                 
             _buffer = newBuffer;
         }
         else if (_index > 0)
         {
-            _buffer.AsSpan(_index, _length).CopyTo(_buffer);
+            _buffer.Span.Slice(_index, _length).CopyTo(_buffer.Span);
             _index = 0;
         }
-    }
-
-    public void Dispose()
-    {
-        if (_buffer is null)
-            return;
-        
-        char[] toReturn = _buffer;
-        _buffer = null!;
-        
-        ArrayPool<char>.Shared.Return(toReturn, true);
     }
 }

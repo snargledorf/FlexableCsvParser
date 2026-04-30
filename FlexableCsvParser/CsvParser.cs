@@ -134,7 +134,7 @@ namespace FlexableCsvParser
             if (fieldInfo.Length == 0)
                 return string.Empty;
 
-            ReadOnlySpan<char> fieldSpan = _recordBuffer.Chars.Slice(fieldInfo.StartIndex, fieldInfo.Length);
+            ReadOnlySpan<char> fieldSpan = _recordBuffer.Chars.Span.Slice(fieldInfo.StartIndex, fieldInfo.Length);
 
             if (fieldInfo.EscapedQuoteCount == 0)
                 return _stringPool.GetString(fieldSpan);
@@ -189,8 +189,8 @@ namespace FlexableCsvParser
             do
             {
                 int resumeLocationForTokenBuffer = _recordBufferObserved + _fieldExaminedLength;
-                ReadOnlySpan<char> tokenBuffer = _recordBuffer.Chars[resumeLocationForTokenBuffer..];
-                var tokenParser = new TokenParser<CsvTokens>(tokenBuffer, !_recordBuffer.EndOfReader, tokenParserState);
+                ReadOnlyMemory<char> tokenBuffer = _recordBuffer.Chars[resumeLocationForTokenBuffer..];
+                var tokenParser = new TokenParser<CsvTokens>(tokenBuffer.Span, !_recordBuffer.EndOfReader, tokenParserState);
                 while (tokenParser.Read())
                 {
                     _fieldExaminedLength += tokenParser.Lexeme.Length;
