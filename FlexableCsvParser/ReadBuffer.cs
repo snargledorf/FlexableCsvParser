@@ -56,6 +56,9 @@ internal class ReadBuffer(int initialBufferSize)
         
         _length -= charsConsumed;
         _index += charsConsumed;
+        
+        _buffer.Span.Slice(_index, _length).CopyTo(_buffer.Span);
+        _index = 0;
     }
 
     private void CheckBuffer()
