@@ -3,7 +3,7 @@ using Tokensharp;
 
 namespace FlexableCsvParser.StateMachine;
 
-internal class QuotedFieldClosingQuoteState : BaseState<QuotedFieldClosingQuoteState>, IStateMapProvider
+internal class QuotedFieldClosingQuoteState : BaseState<QuotedFieldClosingQuoteState>, IStateMapProvider, IDefaultStateProvider
 {
     public static StateMap StateMap { get; } =
         new StateMapBuilder
@@ -15,11 +15,7 @@ internal class QuotedFieldClosingQuoteState : BaseState<QuotedFieldClosingQuoteS
             { CsvTokens.Escape, UnexpectedTokenState.Instance }
         }.Build();
 
-    public override ParserState Id => ParserState.QuotedFieldClosingQuote;
+    public static BaseState? DefaultState => EndOfFieldState.Instance;
 
-    public override bool TryGetDefault([NotNullWhen(true)] out BaseState? defaultState)
-    {
-        defaultState = EndOfFieldState.Instance;
-        return true;
-    }
+    public override ParserState Id => ParserState.QuotedFieldClosingQuote;
 }

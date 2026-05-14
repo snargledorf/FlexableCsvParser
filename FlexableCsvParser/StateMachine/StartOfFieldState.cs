@@ -3,19 +3,15 @@ using Tokensharp;
 
 namespace FlexableCsvParser.StateMachine;
 
-internal class StartOfFieldState<T> : BaseState<T> where T : BaseState, IStateMapProvider, new()
+internal class StartOfFieldState<T> : BaseState<T> where T : BaseState, IStateMapProvider, IDefaultStateProvider, new()
 {
     public override ParserState Id => ParserState.StartOfField;
-
-    public override bool TryGetDefault([NotNullWhen(true)] out BaseState? defaultState)
-    {
-        defaultState = null;
-        return false;
-    }
 }
 
-internal class StartOfFieldState : StartOfFieldState<StartOfFieldState>, IStateMapProvider
+internal class StartOfFieldState : StartOfFieldState<StartOfFieldState>, IStateMapProvider, IDefaultStateProvider
 {
+    public static BaseState? DefaultState => null;
+
     public static StateMap StateMap { get; } =
         new StateMapBuilder
         {

@@ -3,7 +3,7 @@ using Tokensharp;
 
 namespace FlexableCsvParser.StateMachine;
 
-internal class UnquotedFieldTextState : BaseState<UnquotedFieldTextState>, IStateMapProvider
+internal class UnquotedFieldTextState : BaseState<UnquotedFieldTextState>, IStateMapProvider, IDefaultStateProvider
 {
     public static StateMap StateMap { get; } =
         new StateMapBuilder
@@ -12,12 +12,8 @@ internal class UnquotedFieldTextState : BaseState<UnquotedFieldTextState>, IStat
             { CsvTokens.FieldDelimiter, EndOfFieldState.Instance },
             { CsvTokens.EndOfRecord, EndOfRecordState.Instance }
         }.Build();
+
+    public static BaseState? DefaultState => Instance;
     
     public override ParserState Id => ParserState.UnquotedFieldText;
-
-    public override bool TryGetDefault([NotNullWhen(true)] out BaseState? defaultState)
-    {
-        defaultState = this;
-        return true;
-    }
 }
