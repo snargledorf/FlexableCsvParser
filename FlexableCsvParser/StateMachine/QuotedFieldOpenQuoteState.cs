@@ -5,29 +5,19 @@ namespace FlexableCsvParser.StateMachine;
 
 internal class QuotedFieldOpenQuoteState : BaseState<QuotedFieldOpenQuoteState>
 {
+    private static readonly StateMap StateMap =
+        new StateMapBuilder
+        {
+            { CsvTokens.Quote, QuotedFieldClosingQuoteState.Instance },
+            { CsvTokens.WhiteSpace, QuotedFieldLeadingWhiteSpaceState.Instance },
+            { CsvTokens.Escape, QuotedFieldEscapeState.Instance }
+        }.Build();
+    
     public override ParserState Id => ParserState.QuotedFieldOpenQuote;
 
     protected override bool TryGetNextState(TokenType<CsvTokens> token, [NotNullWhen(true)] out BaseState? nextState)
     {
-        if (token == CsvTokens.Quote)
-        {
-            nextState = QuotedFieldClosingQuoteState.Instance;
-            return true;
-        }
-
-        if (token == CsvTokens.Escape)
-        {
-            nextState = QuotedFieldEscapeState.Instance;
-            return true;
-        }
-        
-        if (token == CsvTokens.WhiteSpace)
-        {
-            nextState = QuotedFieldLeadingWhiteSpaceState.Instance;
-            return true;
-        }
-        
-        return TryGetDefault(out nextState);
+        return StateMap.TryGetState(token, out nextState) || TryGetDefault(out nextState);
     }
 
     public override bool TryGetDefault([NotNullWhen(true)] out BaseState? defaultState)
