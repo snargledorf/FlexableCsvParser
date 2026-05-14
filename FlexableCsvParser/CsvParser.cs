@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using CommunityToolkit.HighPerformance.Buffers;
 using FlexableCsvParser.StateMachine;
 using Tokensharp;
 
@@ -143,35 +144,30 @@ namespace FlexableCsvParser
 
             int fieldUpdatedLength = fieldInfo.Length - quoteEscapeLengthDiff;
 
-            char[] strBuffer = ArrayPool<char>.Shared.Rent(fieldUpdatedLength);
-            try
+            using SpanOwner<char> strBufferOwner = SpanOwner<char>.Allocate(fieldUpdatedLength);
+            
+            Span<char> currentPositionSpan = strBufferOwner.Span;
+            ReadOnlySpan<char> quoteSpan = _quote.AsSpan();
+            
+            var tokenParser = new TokenParser<CsvTokens>(fieldSpan, _tokenParserState);
+            while (tokenParser.Read())
             {
-                Span<char> strBufferSpan = strBuffer.AsSpan()[..fieldUpdatedLength];
-                ReadOnlySpan<char> resultSpan = strBufferSpan;
-                var tokenParser = new TokenParser<CsvTokens>(fieldSpan, _tokenParserState);
-                while (tokenParser.Read())
+                if (tokenParser.TokenType == CsvTokens.Escape)
                 {
-                    if (tokenParser.TokenType == CsvTokens.Escape)
-                    {
-                        _quote.CopyTo(strBufferSpan);
-                        strBufferSpan = strBufferSpan[_quote.Length..];
-                    }
-                    else
-                    {
-                        tokenParser.Lexeme.CopyTo(strBufferSpan);
-                        strBufferSpan = strBufferSpan[tokenParser.Lexeme.Length..];
-                    }
+                    quoteSpan.CopyTo(currentPositionSpan);
+                    currentPositionSpan = currentPositionSpan[quoteSpan.Length..];
                 }
+                else
+                {
+                    tokenParser.Lexeme.CopyTo(currentPositionSpan);
+                    currentPositionSpan = currentPositionSpan[tokenParser.Lexeme.Length..];
+                }
+            }
                 
-                if (tokenParser.CharsConsumed != fieldSpan.Length)
-                    throw new Exception("Unable to parse field token");
+            if (tokenParser.CharsConsumed != fieldSpan.Length)
+                throw new Exception("Unable to parse field token");
 
-                return _stringPool.GetString(resultSpan);
-            }
-            finally
-            {
-                ArrayPool<char>.Shared.Return(strBuffer);
-            }
+            return _stringPool.GetString(strBufferOwner.Span);
         }
 
         public bool Read()
