@@ -421,18 +421,16 @@ namespace FlexableCsvParser.Test
         [TestMethod]
         public async Task WhiteSpaceTrimmingNone()
         {
-            const string Csv = "123 , , Foo ,\" Bar \", ";
+            const string Csv = "123 , Foo ,\" Bar \"";
 
             var expectedRecord = new[]
             {
                 "123 ",
-                " ",
                 " Foo ",
-                " Bar ",
-                " "
+                " Bar "
             };
 
-            var parser = new CsvParser(new StringReader(Csv), 5, new CsvParserConfig(whiteSpaceTrimming: WhiteSpaceTrimming.None));
+            var parser = new CsvParser(new StringReader(Csv), 3, new(whiteSpaceTrimming: WhiteSpaceTrimming.None));
 
             var record = new string[expectedRecord.Length];
             int fieldsRead = await parser.ReadRecordAsync(record).ConfigureAwait(false);
@@ -446,18 +444,16 @@ namespace FlexableCsvParser.Test
         [TestMethod]
         public async Task WhiteSpaceTrimmingLeading()
         {
-            const string Csv = "123 , , Foo ,\" Bar \", ";
+            const string Csv = "123 , Foo ,\" Bar \"";
 
             var expectedRecord = new[]
             {
                 "123 ",
-                "",
                 "Foo ",
-                "Bar ",
-                ""
+                "Bar "
             };
 
-            var parser = new CsvParser(new StringReader(Csv), 5, new(whiteSpaceTrimming: WhiteSpaceTrimming.Leading));
+            var parser = new CsvParser(new StringReader(Csv), 3, new(whiteSpaceTrimming: WhiteSpaceTrimming.Leading));
 
             var record = new string[expectedRecord.Length];
             int fieldsRead = await parser.ReadRecordAsync(record).ConfigureAwait(false);
@@ -471,18 +467,16 @@ namespace FlexableCsvParser.Test
         [TestMethod]
         public async Task WhiteSpaceTrimmingTrailing()
         {
-            const string Csv = "123 , , Foo ,\" Bar \", ";
+            const string Csv = "123 , Foo ,\" Bar \"";
 
             var expectedRecord = new[]
             {
                 "123",
-                "",
                 " Foo",
-                " Bar",
-                ""
+                " Bar"
             };
 
-            var parser = new CsvParser(new StringReader(Csv), 5, new(whiteSpaceTrimming: WhiteSpaceTrimming.Trailing));
+            var parser = new CsvParser(new StringReader(Csv), 3, new(whiteSpaceTrimming: WhiteSpaceTrimming.Trailing));
 
             var record = new string[expectedRecord.Length];
             int fieldsRead = await parser.ReadRecordAsync(record).ConfigureAwait(false);
@@ -496,18 +490,16 @@ namespace FlexableCsvParser.Test
         [TestMethod]
         public async Task WhiteSpaceTrimmingBoth()
         {
-            const string Csv = "123 , , Foo ,\" Bar \", ";
+            const string Csv = "123 , Foo ,\" Bar \"";
 
             var expectedRecord = new[]
             {
                 "123",
-                "",
                 "Foo",
-                "Bar",
-                ""
+                "Bar"
             };
 
-            var parser = new CsvParser(new StringReader(Csv), 5, new(whiteSpaceTrimming: WhiteSpaceTrimming.Both));
+            var parser = new CsvParser(new StringReader(Csv), 3, new(whiteSpaceTrimming: WhiteSpaceTrimming.Both));
 
             var record = new string[expectedRecord.Length];
             int fieldsRead = await parser.ReadRecordAsync(record).ConfigureAwait(false);
