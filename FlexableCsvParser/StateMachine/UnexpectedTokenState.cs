@@ -4,14 +4,11 @@ using Tokensharp;
 
 namespace FlexableCsvParser.StateMachine;
 
-internal class UnexpectedTokenState : BaseState<UnexpectedTokenState>
+internal class UnexpectedTokenState : BaseState<UnexpectedTokenState>, IStateMapProvider
 {
-    public override ParserState Id => ParserState.UnexpectedToken;
+    public static StateMap StateMap => throw new NotSupportedException("Unexpected Token");
 
-    protected override bool TryGetNextState(TokenType<CsvTokens> token, [NotNullWhen(true)] out BaseState? nextState)
-    {
-        throw new NotSupportedException("Unexpected Token");
-    }
+    public override ParserState Id => ParserState.UnexpectedToken;
 
     public override bool TryGetDefault([NotNullWhen(true)] out BaseState? defaultState)
     {

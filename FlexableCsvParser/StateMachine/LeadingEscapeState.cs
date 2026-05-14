@@ -3,9 +3,9 @@ using Tokensharp;
 
 namespace FlexableCsvParser.StateMachine;
 
-internal class LeadingEscapeState : BaseState<LeadingEscapeState>
+internal class LeadingEscapeState : BaseState<LeadingEscapeState>, IStateMapProvider
 {
-    private static readonly StateMap StateMap =
+    public static StateMap StateMap { get; } =
         new StateMapBuilder
         {
             { CsvTokens.Quote, QuoteAfterLeadingEscapeState.Instance },
@@ -15,11 +15,6 @@ internal class LeadingEscapeState : BaseState<LeadingEscapeState>
         }.Build();
 
     public override ParserState Id => ParserState.LeadingEscape;
-
-    protected override bool TryGetNextState(TokenType<CsvTokens> token, [NotNullWhen(true)] out BaseState? nextState)
-    {
-        return StateMap.TryGetState(token, out nextState) || TryGetDefault(out nextState);
-    }
 
     public override bool TryGetDefault([NotNullWhen(true)] out BaseState? defaultState)
     {

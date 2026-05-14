@@ -3,9 +3,9 @@ using Tokensharp;
 
 namespace FlexableCsvParser.StateMachine;
 
-internal class LeadingWhiteSpaceState : BaseState<LeadingWhiteSpaceState>
+internal class LeadingWhiteSpaceState : BaseState<LeadingWhiteSpaceState>, IStateMapProvider
 {
-    private static readonly StateMap StateMap =
+    public static StateMap StateMap { get; } =
         new StateMapBuilder
         {
             { CsvTokens.Text, UnquotedFieldTextState.Instance },
@@ -17,11 +17,6 @@ internal class LeadingWhiteSpaceState : BaseState<LeadingWhiteSpaceState>
         }.Build();
     
     public override ParserState Id => ParserState.LeadingWhiteSpace;
-
-    protected override bool TryGetNextState(TokenType<CsvTokens> token, [NotNullWhen(true)] out BaseState? nextState)
-    {
-        return StateMap.TryGetState(token, out nextState) || TryGetDefault(out nextState);
-    }
 
     public override bool TryGetDefault([NotNullWhen(true)] out BaseState? defaultState)
     {

@@ -15,7 +15,10 @@ internal abstract class BaseState
     public abstract bool TryGetDefault([NotNullWhen(true)] out BaseState? defaultState);
 }
 
-internal abstract class BaseState<T> : BaseState where T : BaseState, new()
+internal abstract class BaseState<T> : BaseState where T : BaseState, IStateMapProvider, new()
 {
     public static readonly T Instance = new();
+
+    protected override bool TryGetNextState(TokenType<CsvTokens> token, [NotNullWhen(true)] out BaseState? nextState) =>
+        T.StateMap.TryGetState(token, out nextState);
 }
