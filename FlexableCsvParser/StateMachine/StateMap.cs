@@ -5,7 +5,7 @@ using Tokensharp;
 
 namespace FlexableCsvParser.StateMachine;
 
-internal class StateMap
+internal readonly struct StateMap
 {
     private readonly int _offset;
     private readonly int _length;
@@ -26,8 +26,14 @@ internal class StateMap
 
     public bool TryGetState(TokenType<CsvTokens> token, [NotNullWhen(true)] out BaseState? state)
     {
+        if (_length == 0)
+        {
+            state = null;
+            return false;
+        }
+
         int tokenIndex = token - _offset;
-        
+
         if (tokenIndex > _length || tokenIndex < 0)
         {
             state = null;
