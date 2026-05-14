@@ -1,5 +1,4 @@
 ﻿using Tokensharp;
-using Tokensharp.StateMachine;
 
 namespace FlexableCsvParser
 {

@@ -33,7 +33,7 @@ internal class ReadBuffer(int initialBufferSize)
             if (readBuffer.Length == 0)
             {
                 CheckBuffer();
-                readBuffer = bufferSpan[_length..];
+                readBuffer = _buffer.Span[_length..];
             }
             
             int charsRead = reader.Read(readBuffer);
@@ -56,9 +56,6 @@ internal class ReadBuffer(int initialBufferSize)
         
         _length -= charsConsumed;
         _index += charsConsumed;
-        
-        _buffer.Span.Slice(_index, _length).CopyTo(_buffer.Span);
-        _index = 0;
     }
 
     private void CheckBuffer()

@@ -1,9 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
+using CommunityToolkit.HighPerformance.Helpers;
 
 namespace FlexableCsvParser
 {
@@ -17,31 +17,9 @@ namespace FlexableCsvParser
         // and accepts char[] instead of string.
 
         // An extremely simple, and hopefully fast, hash algorithm.
-        private static uint GetHashCode(ReadOnlySpan<char> buffer)
+        private static int GetHashCode(ReadOnlySpan<char> buffer)
         {
-            uint hash = 0;
-            foreach (char c in buffer)
-                hash = hash * 31 + c;
-
-            return hash;
-        }
-
-        private IEnumerable<(string str, int count)> GetUsage()
-        {
-            for (var i = 0; i < _buckets.Length; i++)
-            {
-                int b = _buckets[i];
-                if (b != 0)
-                {
-                    int idx = b - 1;
-                    while ((uint)idx < _entries.Length)
-                    {
-                        Entry e = _entries[idx];
-                        yield return (e.Str, e.Count);
-                        idx = e.Next;
-                    }
-                }
-            }
+            return HashCode<char>.Combine(buffer);
         }
 
         private readonly int _stringSizeLimit;
@@ -65,18 +43,15 @@ namespace FlexableCsvParser
         /// </remarks>
         public StringPool(int stringSizeLimit)
         {
-            int size = GetSize(DefaultCapacity);
             _stringSizeLimit = stringSizeLimit;
-            _buckets = new int[size];
-            _entries = new Entry[size];
+            _buckets = new int[DefaultCapacity];
+            _entries = new Entry[DefaultCapacity];
         }
 
-        private static int GetSize(int capacity)
+        private int GetSize(int capacity)
         {
-            int size = DefaultCapacity;
-            while (size < capacity)
-                size = size * 2;
-            return size;
+            int size = _entries.Length * 2;
+            return Math.Max(size, capacity);
         }
 
         /// <summary>
@@ -90,8 +65,8 @@ namespace FlexableCsvParser
             if (buffer.Length > _stringSizeLimit)
                 return buffer.ToString();
 
-            Entry[] entries = _entries;
-            uint hashCode = GetHashCode(buffer);
+            Span<Entry> entries = _entries.AsSpan();
+            int hashCode = GetHashCode(buffer);
 
             uint collisionCount = 0;
             ref int bucket = ref GetBucket(hashCode);
@@ -120,9 +95,10 @@ namespace FlexableCsvParser
             int count = _count;
             if (count == entries.Length)
             {
-                entries = Resize();
+                entries = Resize().AsSpan();
                 bucket = ref GetBucket(hashCode);
             }
+            
             int index = count;
             _count = count + 1;
 
@@ -144,18 +120,21 @@ namespace FlexableCsvParser
             int newSize = GetSize(_count + 1);
 
             var entries = new Entry[newSize];
+            Span<Entry> entriesSpan = entries.AsSpan();
 
             int count = _count;
-            Array.Copy(_entries, entries, count);
+            _entries.AsSpan(0, count).CopyTo(entriesSpan);
 
             _buckets = new int[newSize];
 
             for (var i = 0; i < count; i++)
             {
-                if (entries[i].Next >= -1)
+                ref Entry entry = ref entriesSpan[i];
+                
+                if (entry.Next >= -1)
                 {
-                    ref int bucket = ref GetBucket(entries[i].HashCode);
-                    entries[i].Next = bucket - 1;
+                    ref int bucket = ref GetBucket(entry.HashCode);
+                    entry.Next = bucket - 1;
                     bucket = i + 1;
                 }
             }
@@ -165,15 +144,15 @@ namespace FlexableCsvParser
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private ref int GetBucket(uint hashCode)
+        private ref int GetBucket(int hashCode)
         {
             int[] buckets = _buckets;
-            return ref buckets[hashCode & ((uint)buckets.Length - 1)];
+            return ref buckets[hashCode & (buckets.Length - 1)];
         }
 
         private struct Entry
         {
-            public uint HashCode;
+            public int HashCode;
             public int Next;
             public int Count;
             public string Str;
