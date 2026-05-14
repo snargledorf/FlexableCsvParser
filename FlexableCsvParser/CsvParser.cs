@@ -20,7 +20,7 @@ namespace FlexableCsvParser
         private readonly bool _trimLeadingWhiteSpace;
         private readonly bool _trimTrailingWhiteSpace;
         
-        private static readonly IState StartState = StartOfFieldState.Instance;
+        private static readonly BaseState StartState = StartOfFieldState.Instance;
         
         private readonly string _quote;
         private readonly int _escapeLength;
@@ -172,7 +172,7 @@ namespace FlexableCsvParser
 
         public bool Read()
         {
-            IState? currentState = StartState;
+            BaseState? currentState = StartState;
 
             _fieldCount = 0;
             _currentFieldStartIndex = 0;
@@ -190,7 +190,7 @@ namespace FlexableCsvParser
                 {
                     _fieldExaminedLength += tokenParser.Lexeme.Length;
 
-                    IState previousState = currentState;
+                    BaseState previousState = currentState;
 
                     if (currentState.TryTransition(tokenParser.TokenType, out currentState))
                     {
@@ -278,7 +278,7 @@ namespace FlexableCsvParser
                 return false;
 
             bool missingClosingQuote = currentState.Id == ParserState.QuotedFieldText;
-            if (!missingClosingQuote && currentState.TryGetDefault(out IState? defaultState))
+            if (!missingClosingQuote && currentState.TryGetDefault(out BaseState? defaultState))
                 missingClosingQuote = defaultState.Id == ParserState.QuotedFieldText;
 
             if (missingClosingQuote)
