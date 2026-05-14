@@ -5,23 +5,20 @@ namespace FlexableCsvParser.StateMachine;
 
 internal class QuotedFieldClosingQuoteTrailingWhiteSpaceState : BaseState<QuotedFieldClosingQuoteTrailingWhiteSpaceState>
 {
+    private static readonly StateMap StateMap =
+        new StateMapBuilder
+        {
+            { CsvTokens.EndOfRecord, EndOfRecordState.Instance },
+            { CsvTokens.Text, UnexpectedTokenState.Instance },
+            { CsvTokens.Quote, UnexpectedTokenState.Instance },
+            { CsvTokens.Escape, UnexpectedTokenState.Instance }
+        }.Build();
+
     public override ParserState Id => ParserState.QuotedFieldClosingQuoteTrailingWhiteSpace;
 
     protected override bool TryGetNextState(TokenType<CsvTokens> token, [NotNullWhen(true)] out BaseState? nextState)
     {
-        if (token == CsvTokens.EndOfRecord)
-        {
-            nextState = EndOfRecordState.Instance;
-            return true;
-        }
-        
-        if (token == CsvTokens.Text || token == CsvTokens.Quote || token == CsvTokens.Escape)
-        {
-            nextState = UnexpectedTokenState.Instance;
-            return true;
-        }
-        
-        return TryGetDefault(out nextState);
+        return StateMap.TryGetState(token, out nextState) || TryGetDefault(out nextState);
     }
 
     public override bool TryGetDefault([NotNullWhen(true)] out BaseState? defaultState)

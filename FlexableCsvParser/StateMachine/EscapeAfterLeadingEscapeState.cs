@@ -5,41 +5,21 @@ namespace FlexableCsvParser.StateMachine;
 
 internal class EscapeAfterLeadingEscapeState : BaseState<EscapeAfterLeadingEscapeState>
 {
+    private static readonly StateMap StateMap =
+        new StateMapBuilder
+        {
+            { CsvTokens.Escape, Instance },
+            { CsvTokens.Quote, QuoteAfterLeadingEscapeState.Instance },
+            { CsvTokens.FieldDelimiter, EndOfFieldState.Instance },
+            { CsvTokens.WhiteSpace, QuotedFieldClosingQuoteTrailingWhiteSpaceState.Instance },
+            { CsvTokens.Text, UnexpectedTokenState.Instance }
+        }.Build();
+
     public override ParserState Id => ParserState.EscapeAfterLeadingEscape;
 
     protected override bool TryGetNextState(TokenType<CsvTokens> token, [NotNullWhen(true)] out BaseState? nextState)
     {
-        if (token == CsvTokens.Escape)
-        {
-            nextState = this;
-            return true;
-        }
-        
-        if (token == CsvTokens.Quote)
-        {
-            nextState = QuoteAfterLeadingEscapeState.Instance;
-            return true;
-        }
-        
-        if (token == CsvTokens.FieldDelimiter)
-        {
-            nextState = EndOfFieldState.Instance;
-            return true;
-        }
-        
-        if (token == CsvTokens.WhiteSpace)
-        {
-            nextState = QuotedFieldClosingQuoteTrailingWhiteSpaceState.Instance;
-            return true;
-        }
-        
-        if (token == CsvTokens.Text)
-        {
-            nextState = UnexpectedTokenState.Instance;
-            return true;
-        }
-
-        return TryGetDefault(out nextState);
+        return StateMap.TryGetState(token, out nextState) || TryGetDefault(out nextState);
     }
 
     public override bool TryGetDefault([NotNullWhen(true)] out BaseState? defaultState)
