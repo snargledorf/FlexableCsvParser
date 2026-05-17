@@ -1,12 +1,11 @@
 ﻿using System;
-using System.Buffers;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.HighPerformance.Buffers;
-using FlexableCsvParser.StateMachine;
 using Tokensharp;
 
 namespace FlexableCsvParser
@@ -19,8 +18,6 @@ namespace FlexableCsvParser
         private readonly CsvParserConfig _config;
         private readonly bool _trimLeadingWhiteSpace;
         private readonly bool _trimTrailingWhiteSpace;
-        
-        private static readonly BaseState StartState = StartOfFieldState.Instance;
         
         private readonly string _quote;
         private readonly int _escapeLength;
@@ -172,7 +169,7 @@ namespace FlexableCsvParser
 
         public bool Read()
         {
-            BaseState? currentState = StartState;
+            ParserState currentState = ParserState.StartOfField;
 
             _fieldCount = 0;
             _currentFieldStartIndex = 0;
@@ -190,86 +187,80 @@ namespace FlexableCsvParser
                 {
                     _fieldExaminedLength += tokenParser.Lexeme.Length;
 
-                    BaseState previousState = currentState;
+                    ParserState previousState = currentState;
+                    currentState = CsvStateMachine.Transition(currentState, tokenParser.TokenType);
 
-                    if (currentState.TryTransition(tokenParser.TokenType, out currentState))
+                    switch (currentState)
                     {
-                        switch (currentState.Id)
-                        {
-                            case ParserState.UnquotedFieldText:
-                            case ParserState.QuotedFieldText:
-                                _fieldLength += tokenParser.Lexeme.Length + _leadingWhiteSpaceLength + _possibleTrailingWhiteSpaceLength;
-                                _leadingWhiteSpaceLength = _possibleTrailingWhiteSpaceLength = 0;
-                                break;
+                        case ParserState.UnquotedFieldText:
+                        case ParserState.QuotedFieldText:
+                            _fieldLength += tokenParser.Lexeme.Length + _leadingWhiteSpaceLength + _possibleTrailingWhiteSpaceLength;
+                            _leadingWhiteSpaceLength = _possibleTrailingWhiteSpaceLength = 0;
+                            break;
 
-                            case ParserState.EndOfField:
-                                AddCurrentField();
-                                break;
+                        case ParserState.EndOfField:
+                            AddCurrentField();
+                            break;
 
-                            case ParserState.EndOfRecord:
-                                CheckRecord();
-                                return true;
+                        case ParserState.EndOfRecord:
+                            CheckRecord();
+                            return true;
 
-                            case ParserState.EscapeAfterLeadingEscape:
-                                _escapedQuoteCount++;
-                                _fieldLength += _escapeLength;
-                                break;
+                        case ParserState.EscapeAfterLeadingEscape:
+                            _escapedQuoteCount++;
+                            _fieldLength += _escapeLength;
+                            break;
 
-                            case ParserState.QuotedFieldEscape:
-                                _escapedQuoteCount++;
-                                _fieldLength += tokenParser.Lexeme.Length + _leadingWhiteSpaceLength + _possibleTrailingWhiteSpaceLength;
-                                _leadingWhiteSpaceLength = _possibleTrailingWhiteSpaceLength = 0;
-                                break;
+                        case ParserState.QuotedFieldEscape:
+                            _escapedQuoteCount++;
+                            _fieldLength += tokenParser.Lexeme.Length + _leadingWhiteSpaceLength + _possibleTrailingWhiteSpaceLength;
+                            _leadingWhiteSpaceLength = _possibleTrailingWhiteSpaceLength = 0;
+                            break;
 
-                            case ParserState.QuotedFieldLeadingWhiteSpace:
-                            case ParserState.LeadingWhiteSpace:
-                                // Only store the leading whitespace if there is a possiblity we might need it
-                                // IE. If trim leading isn't enabled
-                                if (_trimLeadingWhiteSpace)
-                                    _currentFieldStartIndex += tokenParser.Lexeme.Length;
-                                else
-                                    _leadingWhiteSpaceLength = tokenParser.Lexeme.Length;
-                                break;
+                        case ParserState.QuotedFieldLeadingWhiteSpace:
+                        case ParserState.LeadingWhiteSpace:
+                            // Only store the leading whitespace if there is a possiblity we might need it
+                            // IE. If trim leading isn't enabled
+                            if (_trimLeadingWhiteSpace)
+                                _currentFieldStartIndex += tokenParser.Lexeme.Length;
+                            else
+                                _leadingWhiteSpaceLength = tokenParser.Lexeme.Length;
+                            break;
 
-                            case ParserState.QuotedFieldTrailingWhiteSpace:
-                            case ParserState.UnquotedFieldTrailingWhiteSpace:
-                                // Only store the trailing whitespace if trailing whitespace trimming is enabled
-                                // This is so if we do end up with more field text, we can append the whitespace
-                                // since that means it isn't trailing
-                                if (_trimTrailingWhiteSpace)
-                                    _possibleTrailingWhiteSpaceLength = tokenParser.Lexeme.Length;
-                                else
-                                    _fieldLength += tokenParser.Lexeme.Length;
+                        case ParserState.QuotedFieldTrailingWhiteSpace:
+                        case ParserState.UnquotedFieldTrailingWhiteSpace:
+                            // Only store the trailing whitespace if trailing whitespace trimming is enabled
+                            // This is so if we do end up with more field text, we can append the whitespace
+                            // since that means it isn't trailing
+                            if (_trimTrailingWhiteSpace)
+                                _possibleTrailingWhiteSpaceLength = tokenParser.Lexeme.Length;
+                            else
+                                _fieldLength += tokenParser.Lexeme.Length;
 
-                                break;
+                            break;
 
-                            case ParserState.UnexpectedToken:
-                                throw new InvalidDataException($"Unexpected token: State = {previousState}, Buffer = {tokenBuffer}, Record count = {_recordCount}");
+                        case ParserState.UnexpectedToken:
+                            throw new InvalidDataException($"Unexpected token: State = {previousState}, Buffer = {tokenBuffer}, Record count = {_recordCount}");
 
-                            case ParserState.QuotedFieldClosingQuoteTrailingWhiteSpace:
-                            case ParserState.QuotedFieldClosingQuote:
-                                // NoOp
-                                break;
+                        case ParserState.QuotedFieldClosingQuoteTrailingWhiteSpace:
+                        case ParserState.QuotedFieldClosingQuote:
+                            // NoOp
+                            break;
 
-                            case ParserState.LeadingEscape:
-                                _currentFieldStartIndex += _leadingWhiteSpaceLength + _quote.Length; // TODO Handle escapes that aren't "" (Ex. &quote;)
-                                _leadingWhiteSpaceLength = 0;
-                                break;
+                        case ParserState.LeadingEscape:
+                            _currentFieldStartIndex += _leadingWhiteSpaceLength + _quote.Length;
+                            _leadingWhiteSpaceLength = 0;
+                            break;
 
-                            case ParserState.QuoteAfterLeadingEscape:
-                                _escapedQuoteCount++;
-                                _fieldLength += _escapeLength;
-                                break;
+                        case ParserState.QuoteAfterLeadingEscape:
+                            _escapedQuoteCount++;
+                            _fieldLength += _escapeLength;
+                            break;
 
-                            default:
-                                _currentFieldStartIndex += tokenParser.Lexeme.Length + _leadingWhiteSpaceLength;
-                                _leadingWhiteSpaceLength = 0;
-                                break;
-                        }
-                    }
-                    else
-                    {
-                        throw new InvalidDataException($"Unexpected token: State = {previousState}, Buffer = {tokenBuffer}, Record count = {_recordCount}");
+                        default:
+                            _currentFieldStartIndex += tokenParser.Lexeme.Length + _leadingWhiteSpaceLength;
+                            _leadingWhiteSpaceLength = 0;
+                            break;
                     }
                 }
             } while (_recordBuffer.Read(_reader));
@@ -277,15 +268,24 @@ namespace FlexableCsvParser
             if (_recordBuffer is { Length: 0, EndOfReader: true })
                 return false;
 
-            bool missingClosingQuote = currentState.Id == ParserState.QuotedFieldText;
-            if (!missingClosingQuote && currentState.TryGetDefault(out BaseState? defaultState))
-                missingClosingQuote = defaultState.Id == ParserState.QuotedFieldText;
-
+            bool missingClosingQuote = CheckIfCurrentStateIndicatesMissingClosingQuote(currentState);
             if (missingClosingQuote)
                 throw new Exception($"Final quoted field did not have a closing quote: State = {currentState}, Buffer = {_recordBuffer}");
 
             CheckRecord();
             return true;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool CheckIfCurrentStateIndicatesMissingClosingQuote(ParserState currentState)
+        {
+            return currentState is
+                ParserState.QuotedFieldText or 
+                ParserState.QuotedFieldOpenQuote or
+                ParserState.QuotedFieldEscape or
+                ParserState.QuotedFieldLeadingWhiteSpace or
+                ParserState.QuotedFieldTrailingWhiteSpace or
+                ParserState.QuoteAfterLeadingEscape;
         }
 
         private void CheckRecord()
