@@ -1,9 +1,11 @@
-﻿namespace FlexableCsvParser
+﻿using Tokensharp;
+
+namespace FlexableCsvParser
 {
     public sealed class CsvParserConfig
     {
-        public static readonly CsvParserConfig RFC4180 = new CsvParserConfig(Delimiters.RFC4180);
-        public static readonly CsvParserConfig Default = RFC4180;
+        public static readonly CsvParserConfig Rfc4180 = new(Delimiters.Rfc4180);
+        public static readonly CsvParserConfig Default = Rfc4180;
 
         public CsvParserConfig()
             : this(Delimiters.Default)
@@ -15,32 +17,50 @@
             string endOfRecord = "\r\n",
             string quote = "\"",
             string escape = "\"\"",
-            int recordLength = 0,
             IncompleteRecordHandling incompleteRecordHandling = IncompleteRecordHandling.ThrowException,
-            WhiteSpaceTrimming whiteSpaceTrimming = WhiteSpaceTrimming.None)
+            WhiteSpaceTrimming whiteSpaceTrimming = WhiteSpaceTrimming.None,
+            int stringCacheMaxLength = 128)
             : this(
                 new Delimiters(field, endOfRecord, quote, escape),
-                recordLength,
                 incompleteRecordHandling,
-                whiteSpaceTrimming)
+                whiteSpaceTrimming,
+                stringCacheMaxLength)
         {
         }
 
         public CsvParserConfig(
             Delimiters delimiters,
-            int recordLength = 0,
             IncompleteRecordHandling incompleteRecordHandling = IncompleteRecordHandling.ThrowException,
-            WhiteSpaceTrimming whiteSpaceTrimming = WhiteSpaceTrimming.None)
+            WhiteSpaceTrimming whiteSpaceTrimming = WhiteSpaceTrimming.None,
+            int stringCacheMaxLength = 128)
         {
             Delimiters = delimiters;
-            RecordLength = recordLength;
             IncompleteRecordHandling = incompleteRecordHandling;
             WhiteSpaceTrimming = whiteSpaceTrimming;
+            StringCacheMaxLength = stringCacheMaxLength;
+            
+            if (!Delimiters.AreRfc4180Compliant)
+            {
+                TokenConfiguration = new TokenConfigurationBuilder<CsvTokens>(
+                [
+                    new LexemeToTokenType<CsvTokens>(Delimiters.Field, CsvTokens.FieldDelimiter),
+                    new LexemeToTokenType<CsvTokens>(Delimiters.EndOfRecord, CsvTokens.EndOfRecord),
+                    new LexemeToTokenType<CsvTokens>(Delimiters.Quote, CsvTokens.Quote),
+                    new LexemeToTokenType<CsvTokens>(Delimiters.Escape, CsvTokens.Escape),
+                ]) { NumbersAreText = true }.Build();
+            }
+            else
+            {
+                TokenConfiguration = CsvTokens.Configuration;
+            }
         }
 
-        public Delimiters Delimiters { get; }
+        public int StringCacheMaxLength { get; set; }
 
-        public int RecordLength { get; set; }
+        public Delimiters Delimiters { get; }
+        
+        internal TokenConfiguration<CsvTokens> TokenConfiguration { get; }
+
         public IncompleteRecordHandling IncompleteRecordHandling { get; set; }
 
         public WhiteSpaceTrimming WhiteSpaceTrimming { get; set; }
