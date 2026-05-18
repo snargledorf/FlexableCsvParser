@@ -14,8 +14,9 @@ A high-performance, flexible, and zero-allocation oriented CSV parser for modern
 
 ## Installation
 
-Install via NuGet:
+Install via NuGet: 
 
+![NuGet Version](https://img.shields.io/nuget/v/FlexableCsvParser)
 ```bash
 dotnet add package FlexableCsvParser
 ```
@@ -69,12 +70,12 @@ var parser = new CsvParser(new StringReader(csv), 3, config);
 The `CsvParserConfig` class provides several options to tune the parser's behavior:
 
 
-| Option                     | Description                                                  | Default              |
-| :------------------------- | :----------------------------------------------------------- | :------------------- |
-| `Delimiters`               | Defines the field, record, quote, and escape sequences.      | `Delimiters.Rfc4180` |
-| `IncompleteRecordHandling` | How to handle records with fewer fields than expected.       | `ThrowException`     |
-| `WhiteSpaceTrimming`       | Whether to trim leading or trailing white space.             | `None`               |
-| `StringCacheMaxLength`     | Maximum length of strings to be cached in the `StringPool`. | `128`                |
+| Option                     | Description                                                | Default              |
+| :------------------------- | :--------------------------------------------------------- | :------------------- |
+| `Delimiters`               | Defines the field, record, quote, and escape sequences.    | `Delimiters.Rfc4180` |
+| `IncompleteRecordHandling` | How to handle records with fewer fields than expected.     | `ThrowException`     |
+| `WhiteSpaceTrimming`       | Whether to trim leading or trailing white space.           | `None`               |
+| `StringCacheMaxLength`     | Maximum length of strings to be cached in the`StringPool`. | `128`                |
 
 ### Incomplete Record Handling
 
