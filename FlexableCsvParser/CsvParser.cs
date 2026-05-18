@@ -24,14 +24,6 @@ namespace FlexableCsvParser
 
         private readonly ReadBuffer _recordBuffer = new(InitialRecordBufferSize);
 
-        private int _currentFieldStartIndex;
-        private int _escapedQuoteCount;
-
-        private int _fieldExaminedLength;
-        private int _fieldLength;
-        private int _leadingWhiteSpaceLength;
-        private int _possibleTrailingWhiteSpaceLength;
-
         private readonly RecordFieldInfo[] _currentRecordFields;
         private readonly int _expectedRecordFieldCount;
 
@@ -42,6 +34,17 @@ namespace FlexableCsvParser
         private int _fieldCount;
 
         private readonly TokenParserState<CsvTokens> _tokenParserState;
+
+        private ref struct FieldState
+        {
+            public int CurrentFieldStartIndex;
+            public int EscapedQuoteCount;
+            public int FieldExaminedLength;
+            public int FieldLength;
+            public int LeadingWhiteSpaceLength;
+            public int PossibleTrailingWhiteSpaceLength;
+            public int RecordBufferObserved;
+        }
 
         public int FieldCount => _fieldCount;
 
@@ -172,20 +175,20 @@ namespace FlexableCsvParser
             var currentState = ParserState.StartOfRecord;
 
             _fieldCount = 0;
-            _currentFieldStartIndex = 0;
-            _fieldExaminedLength = 0;
             
             _recordBuffer.AdvanceBuffer(_recordBufferObserved);
             _recordBufferObserved = 0;
 
+            FieldState state = default;
+
             do
             {
-                int resumeLocationForTokenBuffer = _recordBufferObserved + _fieldExaminedLength;
+                int resumeLocationForTokenBuffer = state.RecordBufferObserved + state.FieldExaminedLength;
                 ReadOnlyMemory<char> tokenBuffer = _recordBuffer.Chars[resumeLocationForTokenBuffer..];
                 var tokenParser = new TokenParser<CsvTokens>(tokenBuffer.Span, !_recordBuffer.EndOfReader, _tokenParserState);
                 while (tokenParser.Read())
                 {
-                    _fieldExaminedLength += tokenParser.Lexeme.Length;
+                    state.FieldExaminedLength += tokenParser.Lexeme.Length;
 
                     ParserState previousState = currentState;
                     currentState = CsvStateMachine.Transition(currentState, tokenParser.TokenType);
@@ -194,27 +197,27 @@ namespace FlexableCsvParser
                     {
                         case ParserState.UnquotedFieldText:
                         case ParserState.QuotedFieldText:
-                            _fieldLength += tokenParser.Lexeme.Length + _leadingWhiteSpaceLength + _possibleTrailingWhiteSpaceLength;
-                            _leadingWhiteSpaceLength = _possibleTrailingWhiteSpaceLength = 0;
+                            state.FieldLength += tokenParser.Lexeme.Length + state.LeadingWhiteSpaceLength + state.PossibleTrailingWhiteSpaceLength;
+                            state.LeadingWhiteSpaceLength = state.PossibleTrailingWhiteSpaceLength = 0;
                             break;
 
                         case ParserState.EndOfField:
-                            AddCurrentField();
+                            AddCurrentField(ref state);
                             break;
 
                         case ParserState.EndOfRecord:
-                            CheckRecord();
+                            CheckRecord(ref state);
                             return true;
 
                         case ParserState.EscapeAfterLeadingEscape:
-                            _escapedQuoteCount++;
-                            _fieldLength += _escapeLength;
+                            state.EscapedQuoteCount++;
+                            state.FieldLength += _escapeLength;
                             break;
 
                         case ParserState.QuotedFieldEscape:
-                            _escapedQuoteCount++;
-                            _fieldLength += tokenParser.Lexeme.Length + _leadingWhiteSpaceLength + _possibleTrailingWhiteSpaceLength;
-                            _leadingWhiteSpaceLength = _possibleTrailingWhiteSpaceLength = 0;
+                            state.EscapedQuoteCount++;
+                            state.FieldLength += tokenParser.Lexeme.Length + state.LeadingWhiteSpaceLength + state.PossibleTrailingWhiteSpaceLength;
+                            state.LeadingWhiteSpaceLength = state.PossibleTrailingWhiteSpaceLength = 0;
                             break;
 
                         case ParserState.QuotedFieldLeadingWhiteSpace:
@@ -222,9 +225,9 @@ namespace FlexableCsvParser
                             // Only store the leading whitespace if there is a possiblity we might need it
                             // IE. If trim leading isn't enabled
                             if (_trimLeadingWhiteSpace)
-                                _currentFieldStartIndex += tokenParser.Lexeme.Length;
+                                state.CurrentFieldStartIndex += tokenParser.Lexeme.Length;
                             else
-                                _leadingWhiteSpaceLength = tokenParser.Lexeme.Length;
+                                state.LeadingWhiteSpaceLength = tokenParser.Lexeme.Length;
                             break;
 
                         case ParserState.QuotedFieldTrailingWhiteSpace:
@@ -233,9 +236,9 @@ namespace FlexableCsvParser
                             // This is so if we do end up with more field text, we can append the whitespace
                             // since that means it isn't trailing
                             if (_trimTrailingWhiteSpace)
-                                _possibleTrailingWhiteSpaceLength = tokenParser.Lexeme.Length;
+                                state.PossibleTrailingWhiteSpaceLength = tokenParser.Lexeme.Length;
                             else
-                                _fieldLength += tokenParser.Lexeme.Length;
+                                state.FieldLength += tokenParser.Lexeme.Length;
 
                             break;
 
@@ -248,18 +251,18 @@ namespace FlexableCsvParser
                             break;
 
                         case ParserState.LeadingEscape:
-                            _currentFieldStartIndex += _leadingWhiteSpaceLength + _quote.Length;
-                            _leadingWhiteSpaceLength = 0;
+                            state.CurrentFieldStartIndex += state.LeadingWhiteSpaceLength + _quote.Length;
+                            state.LeadingWhiteSpaceLength = 0;
                             break;
 
                         case ParserState.QuoteAfterLeadingEscape:
-                            _escapedQuoteCount++;
-                            _fieldLength += _escapeLength;
+                            state.EscapedQuoteCount++;
+                            state.FieldLength += _escapeLength;
                             break;
 
                         default:
-                            _currentFieldStartIndex += tokenParser.Lexeme.Length + _leadingWhiteSpaceLength;
-                            _leadingWhiteSpaceLength = 0;
+                            state.CurrentFieldStartIndex += tokenParser.Lexeme.Length + state.LeadingWhiteSpaceLength;
+                            state.LeadingWhiteSpaceLength = 0;
                             break;
                     }
                 }
@@ -272,7 +275,7 @@ namespace FlexableCsvParser
             if (missingClosingQuote)
                 throw new Exception($"Final quoted field did not have a closing quote: State = {currentState}, Buffer = {_recordBuffer}");
 
-            CheckRecord();
+            CheckRecord(ref state);
             return true;
         }
 
@@ -288,9 +291,11 @@ namespace FlexableCsvParser
                 ParserState.QuoteAfterLeadingEscape;
         }
 
-        private void CheckRecord()
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void CheckRecord(ref FieldState state)
         {
-            AddCurrentField();
+            AddCurrentField(ref state);
+            _recordBufferObserved = state.RecordBufferObserved;
 
             if (_fieldCount < _expectedRecordFieldCount && _config.IncompleteRecordHandling == IncompleteRecordHandling.ThrowException)
                 throw new InvalidDataException($"Record is incomplete: {string.Join(", ", Enumerable.Range(0, _fieldCount).Select(GetString))}");
@@ -298,21 +303,22 @@ namespace FlexableCsvParser
             _recordCount++;
         }
 
-        private void AddCurrentField()
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void AddCurrentField(ref FieldState state)
         {
             if (_fieldCount == _expectedRecordFieldCount)
                 throw new InvalidDataException($"Record is too long: {string.Join(", ", Enumerable.Range(0, _fieldCount).Select(GetString))}");
             
-            _fieldLength += _leadingWhiteSpaceLength;
+            state.FieldLength += state.LeadingWhiteSpaceLength;
             
             ref RecordFieldInfo fieldInfo = ref _currentRecordFields[_fieldCount++];
-            fieldInfo = new RecordFieldInfo(_currentFieldStartIndex, _fieldLength, _escapedQuoteCount);
+            fieldInfo = new RecordFieldInfo(state.CurrentFieldStartIndex, state.FieldLength, state.EscapedQuoteCount);
 
-            _recordBufferObserved += _fieldExaminedLength;
-            _currentFieldStartIndex = _recordBufferObserved;
+            state.RecordBufferObserved += state.FieldExaminedLength;
+            state.CurrentFieldStartIndex = state.RecordBufferObserved;
 
-            _fieldLength = _escapedQuoteCount =
-                _leadingWhiteSpaceLength = _possibleTrailingWhiteSpaceLength = _fieldExaminedLength = 0;
+            state.FieldLength = state.EscapedQuoteCount =
+                state.LeadingWhiteSpaceLength = state.PossibleTrailingWhiteSpaceLength = state.FieldExaminedLength = 0;
         }
     }
 }
