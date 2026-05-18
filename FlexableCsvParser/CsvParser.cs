@@ -260,10 +260,16 @@ namespace FlexableCsvParser
                             state.FieldLength += _escapeLength;
                             break;
 
-                        default:
+                        case ParserState.StartOfRecord:
+                        case ParserState.EndOfReader:
+                        case ParserState.QuotedFieldOpenQuote:
+                        case ParserState.QuotedFieldWithoutClosingQuote:
                             state.CurrentFieldStartIndex += tokenParser.Lexeme.Length + state.LeadingWhiteSpaceLength;
                             state.LeadingWhiteSpaceLength = 0;
                             break;
+                        
+                        default:
+                            throw new InvalidOperationException($"Unhandled state: {currentState}, Previous State: {previousState}");
                     }
                 }
             } while (_recordBuffer.Read(_reader));
