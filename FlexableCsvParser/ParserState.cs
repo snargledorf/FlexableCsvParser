@@ -2,7 +2,7 @@
 {
     internal enum ParserState
     {
-        StartOfField,
+        StartOfRecord,
         UnquotedFieldText,
         EndOfField,
         EndOfRecord,

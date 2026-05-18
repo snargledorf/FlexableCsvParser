@@ -134,7 +134,7 @@ internal static class CsvStateMachine
     private static void ConfigureStartOfFieldTransitions(MatrixBuilder matrixBuilder)
     {
         ParserState[] startOfFieldStates =
-            [ParserState.StartOfField, ParserState.EndOfField, ParserState.EndOfRecord];
+            [ParserState.StartOfRecord, ParserState.EndOfField, ParserState.EndOfRecord];
         // StartOfField, EndOfField, EndOfRecord
         foreach (ParserState state in startOfFieldStates)
             matrixBuilder.Set(state, CsvTokens.Text, ParserState.UnquotedFieldText)

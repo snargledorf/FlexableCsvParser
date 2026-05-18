@@ -169,7 +169,7 @@ namespace FlexableCsvParser
 
         public bool Read()
         {
-            ParserState currentState = ParserState.StartOfField;
+            var currentState = ParserState.StartOfRecord;
 
             _fieldCount = 0;
             _currentFieldStartIndex = 0;
