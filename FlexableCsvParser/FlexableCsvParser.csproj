@@ -26,7 +26,7 @@
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.HighPerformance" Version="8.4.2" />
-    <PackageReference Include="Tokensharp" Version="4.7.1" />
+    <PackageReference Include="Tokensharp" Version="4.7.2" />
   </ItemGroup>
 
 </Project>
