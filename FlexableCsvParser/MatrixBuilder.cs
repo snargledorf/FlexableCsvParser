@@ -1,18 +1,40 @@
-﻿namespace FlexableCsvParser;
+﻿using System.Collections.Generic;
+using Tokensharp;
 
-internal sealed class MatrixBuilder(int[,] transitionMatrix, int columnCount)
+namespace FlexableCsvParser;
+
+internal sealed class MatrixBuilder(int columnCount)
 {
+    private readonly Dictionary<ParserState, ParserState[]> _transitionMatrix = new();
+    
     public MatrixBuilder SetDefault(ParserState state, ParserState defaultState)
     {
-        for (int column = 0; column < columnCount; column++) 
-            transitionMatrix[(int)state, column] = (int)defaultState;
+        ParserState[] stateTransitions = GetParserStateTransitions(state);
+        for (var column = 0; column < columnCount; column++) 
+            stateTransitions[column] = defaultState;
         
         return this;
     }
 
     public MatrixBuilder Set(ParserState state, CsvTokens token, ParserState value)
     {
-        transitionMatrix[(int)state, token] = (int)value;
+        ParserState[] stateTransitions = GetParserStateTransitions(state);
+        stateTransitions[(int)token] = value;
         return this;
     }
+
+    public int[,] Build()
+    {
+        var matrix = new int[_transitionMatrix.Count, columnCount];
+        
+        foreach ((var state, ParserState[] stateTransitions) in _transitionMatrix)
+        {
+            for (int column = 0; column < columnCount; column++)
+                matrix[(int)state, column] = (int)stateTransitions[column];
+        }
+
+        return matrix;
+    }
+
+    private ParserState[] GetParserStateTransitions(ParserState state) => _transitionMatrix.GetOrAdd(state, _ => new ParserState[columnCount]);
 }

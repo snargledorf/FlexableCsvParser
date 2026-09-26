@@ -5,15 +5,13 @@ namespace FlexableCsvParser;
 
 internal static class CsvStateMachine
 {
-    private const int MaxCsvTokenIndex = 6;
-    private const int MatrixColumnCount = MaxCsvTokenIndex + 1;
-    private const int ParserStateCount = 19;
+    private const int NumberOfTokenTypes = 7;
 
-    private static readonly int[,] TransitionMatrix = new int[ParserStateCount, MatrixColumnCount];
+    private static readonly int[,] TransitionMatrix;
 
     static CsvStateMachine()
     {
-        var matrixBuilder = new MatrixBuilder(TransitionMatrix, MatrixColumnCount);
+        var matrixBuilder = new MatrixBuilder(NumberOfTokenTypes);
         
         SetDefaultsToUnexpectedToken(matrixBuilder);
 
@@ -123,6 +121,8 @@ internal static class CsvStateMachine
                 ParserState.QuotedFieldTrailingWhiteSpace)
             .Set(ParserState.QuoteAfterLeadingEscape, CsvTokens.Quote, ParserState.UnexpectedToken)
             .Set(ParserState.QuoteAfterLeadingEscape, CsvTokens.Escape, ParserState.UnexpectedToken);
+
+        TransitionMatrix = matrixBuilder.Build();
     }
 
     private static void SetDefaultsToUnexpectedToken(MatrixBuilder matrixBuilder)
